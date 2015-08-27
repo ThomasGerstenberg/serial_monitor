@@ -23,14 +23,15 @@ class SerialMonitorCommand(sublime_plugin.WindowCommand):
         self.settings = None
         self.output_view = None
         self.comport = None
+        self.settings_name = "serial_monitor.sublime-settings"
 
     def run(self):
-        self.settings = sublime.load_settings("serial_monitor.sublime-settings")
+        self.settings = sublime.load_settings(self.settings_name)
 
         index = -1
         comport = self.settings.get("comport")
         if comport in comports:
-            index = comports.index(comport)         
+            index = comports.index(comport)
         self.window.show_quick_panel(comports, self.port_selected, selected_index=index)
 
     def port_selected(self, selected_index):
@@ -54,3 +55,4 @@ class SerialMonitorCommand(sublime_plugin.WindowCommand):
         self.output_view.set_read_only(True)
         self.output_view.run_command("serial_monitor_write_output", {"text":"abcd"})
         sublime.status_message("Starting serial monitor on {0}".format(self.comport))
+        sublime.save_settings(self.settings_name)
