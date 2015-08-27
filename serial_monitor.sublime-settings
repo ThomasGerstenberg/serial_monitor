@@ -1,4 +1,4 @@
 {
-    "comport": "COM4",
-    "baud_rate": 115200
+    "comport": "COM1",
+    "baud_rate": 9600
 }
