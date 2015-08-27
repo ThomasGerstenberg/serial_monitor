@@ -1,0 +1,8 @@
+[
+    {"caption": "Serial Monitor: Connect", "command": "serial_monitor"},
+    {"caption": "Serial Monitor: Disconnect", "command": "serial_monitor"},
+    {"caption": "Serial Monitor: Set Port", "command": "serial_monitor"},
+    {"caption": "Serial Monitor: Set Baud", "command": "serial_monitor"},
+    {"caption": "Serial Monitor: Run Script", "command": "serial_monitor"},
+    {"caption": "Serial Monitor: Run Command", "command": "serial_monitor"}
+]
