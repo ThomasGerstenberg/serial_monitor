@@ -33,8 +33,6 @@ class SerialMonitorCommand(sublime_plugin.WindowCommand):
             index = comports.index(comport)         
         self.window.show_quick_panel(comports, self.port_selected, selected_index=index)
 
-        sublime.status_message("Serial Monitor Command Run")
-
     def port_selected(self, selected_index):
         if selected_index == -1:
             return
@@ -52,6 +50,7 @@ class SerialMonitorCommand(sublime_plugin.WindowCommand):
             return
         self.settings.set("baud_rate", baud_rates[selected_index])
         self.output_view = self.window.new_file()
-        self.output_view.set_name("{0} Output.txt".format(self.comport))
+        self.output_view.set_name("{0}_output.txt".format(self.comport))
         self.output_view.set_read_only(True)
         self.output_view.run_command("serial_monitor_write_output", {"text":"abcd"})
+        sublime.status_message("Starting serial monitor on {0}".format(self.comport))
