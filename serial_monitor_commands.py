@@ -4,20 +4,36 @@ import os
 import functools
 import threading
 import time
+
 sys.path.append(os.path.dirname(__file__))
-sys.path.append(os.path.join(os.path.dirname(__file__), "serial"))
-import serial
+
+import serial_monitor_thread
+
+TEST_MODE = True
+
+if not TEST_MODE:
+    sys.path.append(os.path.join(os.path.dirname(__file__), "serial"))
+    import serial
+    from serial.tools import list_ports
+else:
+    class MockListPorts(object):
+        NUM_PORTS = 5
+        def __init__(self):
+            self.port_list = [("COM" + str(i), "Desc" + str(i), "HW" + str(i)) for i in range(1, self.NUM_PORTS + 1)]
+
+        def comports(self):
+            return self.port_list
+
+    class MockSerial(object):
+        def __init__(self):
+            pass
+
+    # from mock_serial import MockSerial, MockListPorts
+    list_ports = MockListPorts()
+    serial = MockSerial()
 
 
-
-comports = ["COM" + str(i) for i in range(1, 5)]
 baud_rates = ["9600", "19200", "38400", "57600", "115200"]
-
-def main_thread(callback, *args, **kwargs):
-    # sublime.set_timeout gets used to send things onto the main thread
-    # most sublime.[something] calls need to be on the main thread
-    sublime.set_timeout(functools.partial(callback, *args, **kwargs), 0)
-
 
 class SerialMonitorWriteCommand(sublime_plugin.TextCommand):
     def run(self, edit, **args):
@@ -30,58 +46,6 @@ class SerialMonitorWriteCommand(sublime_plugin.TextCommand):
             end = args["region_end"]
             self.view.insert(edit, self.view.size(), view.substr(sublime.Region(begin, end)))
         self.view.set_read_only(True)
-
-
-class SerialMonitor(threading.Thread):
-    def __init__(self, comport, baud, view, window):
-        super(SerialMonitor, self).__init__()
-        self.comport = comport
-        self.baud = baud
-        self.view = view
-        self.window = window
-        self.lock = threading.Lock()
-        self.running = True;
-        self.text_to_write = ""
-        self.file_to_write = {}
-
-    def write_line(self, text):
-        if self._write_waiting():
-            return False
-        self.text_to_write = text
-        return True
-
-    def write_file(self, view, region):
-        if self._write_waiting():
-            return False
-        self.file_to_write = {"view": view, "region": region}
-        return True
-
-    def _write_waiting(self):
-        return self.file_to_write or self.text_to_write
-
-    def disconnect(self):
-        self.running = False
-
-    def run(self):
-        i = 0
-        while self.running and self.view.is_valid():
-            main_thread(self.view.run_command, "serial_monitor_write", {"text": "{0}, ".format(i)})
-
-            if self.text_to_write:
-                main_thread(self.view.run_command, "serial_monitor_write", {"text": self.text_to_write})
-                self.text_to_write = ""
-            if self.file_to_write:
-                view = self.file_to_write["view"]
-                region = self.file_to_write["region"]
-                main_thread(self.view.run_command, "serial_monitor_write", {"view_id": view.id(), "region_begin": region.begin(), "region_end": region.end()})
-                self.file_to_write = {}
-
-            i += 1
-            time.sleep(1)
-
-        if self.view.is_valid():
-            main_thread(self.view.run_command, "serial_monitor_write", {"text": "\nDisconnected from {0}".format(self.comport)})
-        main_thread(self.window.run_command, "serial_monitor", {"serial_command": "file_closed", "comport": self.comport})
 
 
 class PortInfo(object):
@@ -116,9 +80,9 @@ class SerialMonitorCommand(sublime_plugin.WindowCommand):
 
     def run(self, **args):
         self.settings = sublime.load_settings(self.settings_name)
-
+        # print(list_ports.port_list)
         open_portnames = [k for k, v in self.open_ports.items()]
-        self.available_ports = [c for c in comports if c not in open_portnames]
+        self.available_ports = [c[0] for c in list_ports.comports() if c[0] not in open_portnames]
 
         func = self.arg_map[args.pop("serial_command")]
 
@@ -149,7 +113,7 @@ class SerialMonitorCommand(sublime_plugin.WindowCommand):
     def disconnected(self, port_info):
         if port_info.comport in self.open_ports:
             self.open_ports.pop(port_info.comport)
-            sublime.status_message("Disconnected from {0}".format(comport))
+            sublime.status_message("Disconnected from {0}".format(port_info.comport))
 
     def write_line(self, port_info):
         self.window.show_input_panel("Enter Text:", "", self._text_entered, None, self._text_entry_cancelled)
@@ -169,7 +133,7 @@ class SerialMonitorCommand(sublime_plugin.WindowCommand):
                 port_list = open_portnames;
 
             if not port_list:
-                sublime.status_message("No ports available")
+                sublime.message_dialog("No ports available")
                 return
 
             port_info.callback = func
@@ -187,14 +151,13 @@ class SerialMonitorCommand(sublime_plugin.WindowCommand):
 
             self.port_info = port_info
             self.window.show_quick_panel(port_info.port_list, self._port_selected, selected_index=index)
-
         return f
 
     def _port_selected(self, selected_index):
         if selected_index == -1:
             return
         self.port_info.comport = self.port_info.port_list[selected_index]
-        self.settings.set("comport", comports[selected_index])
+        self.settings.set("comport", self.port_info.comport)
         self.port_info.callback(self.port_info)
 
     def _baud_selected(self, selected_index):
@@ -210,7 +173,7 @@ class SerialMonitorCommand(sublime_plugin.WindowCommand):
         view.set_name("{0}_output.txt".format(port_info.comport))
         view.set_read_only(True)
 
-        sm_thread = SerialMonitor(port_info.comport, port_info.baud, view, self.window)
+        sm_thread = serial_monitor_thread.SerialMonitor(port_info.comport, port_info.baud, view, self.window)
         self.open_ports[port_info.comport] = sm_thread
         sm_thread.start()
 
