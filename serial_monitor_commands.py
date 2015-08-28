@@ -4,13 +4,33 @@ import os
 import functools
 import threading
 import time
+
 sys.path.append(os.path.dirname(__file__))
-sys.path.append(os.path.join(os.path.dirname(__file__), "serial"))
-import serial
+
+TEST_MODE = True
+
+if not TEST_MODE:
+    sys.path.append(os.path.join(os.path.dirname(__file__), "serial"))
+    import serial
+    from serial.tools import list_ports
+else:
+    class MockListPorts(object):
+        NUM_PORTS = 5
+        def __init__(self):
+            self.port_list = [("COM" + str(i), "Desc" + str(i), "HW" + str(i)) for i in range(1, self.NUM_PORTS + 1)]
+
+        def comports(self):
+            return self.port_list
+
+    class MockSerial(object):
+        def __init__(self):
+            pass
+
+    # from mock_serial import MockSerial, MockListPorts
+    list_ports = MockListPorts()
+    serial = MockSerial()
 
 
-
-comports = ["COM" + str(i) for i in range(1, 5)]
 baud_rates = ["9600", "19200", "38400", "57600", "115200"]
 
 def main_thread(callback, *args, **kwargs):
@@ -116,9 +136,9 @@ class SerialMonitorCommand(sublime_plugin.WindowCommand):
 
     def run(self, **args):
         self.settings = sublime.load_settings(self.settings_name)
-
+        # print(list_ports.port_list)
         open_portnames = [k for k, v in self.open_ports.items()]
-        self.available_ports = [c for c in comports if c not in open_portnames]
+        self.available_ports = [c[0] for c in list_ports.comports() if c[0] not in open_portnames]
 
         func = self.arg_map[args.pop("serial_command")]
 
@@ -149,7 +169,7 @@ class SerialMonitorCommand(sublime_plugin.WindowCommand):
     def disconnected(self, port_info):
         if port_info.comport in self.open_ports:
             self.open_ports.pop(port_info.comport)
-            sublime.status_message("Disconnected from {0}".format(comport))
+            sublime.status_message("Disconnected from {0}".format(port_info.comport))
 
     def write_line(self, port_info):
         self.window.show_input_panel("Enter Text:", "", self._text_entered, None, self._text_entry_cancelled)
@@ -169,7 +189,7 @@ class SerialMonitorCommand(sublime_plugin.WindowCommand):
                 port_list = open_portnames;
 
             if not port_list:
-                sublime.status_message("No ports available")
+                sublime.message_dialog("No ports available")
                 return
 
             port_info.callback = func
@@ -187,14 +207,13 @@ class SerialMonitorCommand(sublime_plugin.WindowCommand):
 
             self.port_info = port_info
             self.window.show_quick_panel(port_info.port_list, self._port_selected, selected_index=index)
-
         return f
 
     def _port_selected(self, selected_index):
         if selected_index == -1:
             return
         self.port_info.comport = self.port_info.port_list[selected_index]
-        self.settings.set("comport", comports[selected_index])
+        self.settings.set("comport", self.port_info.comport)
         self.port_info.callback(self.port_info)
 
     def _baud_selected(self, selected_index):
