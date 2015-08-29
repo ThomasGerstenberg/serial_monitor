@@ -41,7 +41,7 @@ class SerialMonitor(threading.Thread):
     def disconnect(self):
         self.running = False
 
-    def _write_text(self, text):
+    def _write_text_to_file(self, text):
         main_thread(self.view.run_command, "serial_monitor_write", {"text": text})
 
     def run(self):
@@ -53,11 +53,11 @@ class SerialMonitor(threading.Thread):
             serial_input = ""
             serial_input = self.serial.read(100)
             if serial_input:
-                self._write_text(serial_input)
+                self._write_text_to_file(serial_input)
 
             if self.text_to_write:
                 self.serial.write(self.text_to_write)
-                self._write_text(self.text_to_write)
+                self._write_text_to_file(self.text_to_write)
                 self.text_to_write = ""
             if self.file_to_write:
                 view = self.file_to_write["view"]
@@ -69,6 +69,6 @@ class SerialMonitor(threading.Thread):
 
         # Thread terminated, write to buffer if still valid and close the serial port
         if self.view.is_valid():
-            self._write_text("\nDisconnected from {0}".format(self.comport))
+            self._write_text_to_file("\nDisconnected from {0}".format(self.comport))
         self.serial.close()
         main_thread(self.window.run_command, "serial_monitor", {"serial_command": "file_closed", "comport": self.comport})

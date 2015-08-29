@@ -188,7 +188,7 @@ class SerialMonitorCommand(sublime_plugin.WindowCommand):
         self.open_ports[port_info.comport] = sm_thread
         sm_thread.start()
 
-        sublime.status_message("Starting serial monitor on {0}".format(self.comport))
+        sublime.status_message("Starting serial monitor on {0}".format(port_info.comport))
 
     def _text_entered(self, text):
         if text:
