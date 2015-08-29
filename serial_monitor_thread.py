@@ -12,10 +12,10 @@ def main_thread(callback, *args, **kwargs):
 
 
 class SerialMonitor(threading.Thread):
-    def __init__(self, comport, baud, view, window):
+    def __init__(self, comport, serial, view, window):
         super(SerialMonitor, self).__init__()
         self.comport = comport
-        self.baud = baud
+        self.serial = serial
         self.view = view
         self.window = window
         self.lock = threading.Lock()
@@ -41,23 +41,34 @@ class SerialMonitor(threading.Thread):
     def disconnect(self):
         self.running = False
 
+    def _write_text(self, text):
+        main_thread(self.view.run_command, "serial_monitor_write", {"text": text})
+
     def run(self):
-        i = 0
+        self.serial.port = self.comport
+        self.serial.open()
         while self.running and self.view.is_valid():
-            main_thread(self.view.run_command, "serial_monitor_write", {"text": "{0}, ".format(i)})
+
+            # Read the input from the serial port
+            serial_input = ""
+            serial_input = self.serial.read(100)
+            if serial_input:
+                self._write_text(serial_input)
 
             if self.text_to_write:
-                main_thread(self.view.run_command, "serial_monitor_write", {"text": self.text_to_write})
+                self.serial.write(self.text_to_write)
+                self._write_text(self.text_to_write)
                 self.text_to_write = ""
             if self.file_to_write:
                 view = self.file_to_write["view"]
                 region = self.file_to_write["region"]
+
+                self.serial.write(self.view.substr(region))
                 main_thread(self.view.run_command, "serial_monitor_write", {"view_id": view.id(), "region_begin": region.begin(), "region_end": region.end()})
                 self.file_to_write = {}
 
-            i += 1
-            time.sleep(1)
-
+        # Thread terminated, write to buffer if still valid and close the serial port
         if self.view.is_valid():
-            main_thread(self.view.run_command, "serial_monitor_write", {"text": "\nDisconnected from {0}".format(self.comport)})
+            self._write_text("\nDisconnected from {0}".format(self.comport))
+        self.serial.close()
         main_thread(self.window.run_command, "serial_monitor", {"serial_command": "file_closed", "comport": self.comport})

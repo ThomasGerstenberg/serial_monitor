@@ -9,7 +9,7 @@ sys.path.append(os.path.dirname(__file__))
 
 import serial_monitor_thread
 
-TEST_MODE = True
+TEST_MODE = False
 
 if not TEST_MODE:
     sys.path.append(os.path.join(os.path.dirname(__file__), "serial"))
@@ -25,8 +25,18 @@ else:
             return self.port_list
 
     class MockSerial(object):
-        def __init__(self):
-            pass
+        class Serial(object):
+            def __init__(self, *args, **kwargs):
+                pass
+
+            def open(self):
+                pass
+
+            def write(self, text):
+                pass
+
+            def read(self, size):
+                pass
 
     # from mock_serial import MockSerial, MockListPorts
     list_ports = MockListPorts()
@@ -138,6 +148,7 @@ class SerialMonitorCommand(sublime_plugin.WindowCommand):
 
             port_info.callback = func
             port_info.port_list = port_list
+            self.port_info = port_info
 
             index = -1
             if len(port_info.port_list) == 1:
@@ -149,7 +160,6 @@ class SerialMonitorCommand(sublime_plugin.WindowCommand):
             if comport in port_info.port_list:
                 index = port_info.port_list.index(comport)
 
-            self.port_info = port_info
             self.window.show_quick_panel(port_info.port_list, self._port_selected, selected_index=index)
         return f
 
@@ -165,20 +175,20 @@ class SerialMonitorCommand(sublime_plugin.WindowCommand):
             return
         self.port_info.baud = baud_rates[selected_index]
         self.settings.set("baud_rate", baud_rates[selected_index])
-        self._open_port(self.port_info)
+        self._create_port(self.port_info)
 
-    def _open_port(self, port_info):
+    def _create_port(self, port_info):
         view = None
         view = self.window.new_file()
         view.set_name("{0}_output.txt".format(port_info.comport))
         view.set_read_only(True)
+        serial_port = serial.Serial(None, port_info.baud, timeout=0.1)
 
-        sm_thread = serial_monitor_thread.SerialMonitor(port_info.comport, port_info.baud, view, self.window)
+        sm_thread = serial_monitor_thread.SerialMonitor(port_info.comport, serial_port, view, self.window)
         self.open_ports[port_info.comport] = sm_thread
         sm_thread.start()
 
         sublime.status_message("Starting serial monitor on {0}".format(self.comport))
-        sublime.save_settings(self.settings_name)
 
     def _text_entered(self, text):
         if text:
