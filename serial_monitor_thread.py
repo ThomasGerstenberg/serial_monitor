@@ -50,7 +50,7 @@ class SerialMonitor(threading.Thread):
     def _read_serial(self):
         serial_input = self.serial.read(100)
         if serial_input:
-            self._write_text_to_file(serial_input)
+            self._write_text_to_file(serial_input.decode(encoding="ascii"))
 
     def run(self):
         self.serial.port = self.comport
