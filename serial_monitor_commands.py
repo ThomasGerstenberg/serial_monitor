@@ -9,7 +9,13 @@ sys.path.append(os.path.dirname(__file__))
 
 import serial_monitor_thread
 
-TEST_MODE = True
+# Check if test mode is enabled
+TEST_MODE = False
+settings = sublime.load_settings("serial_monitor.sublime-settings")
+if settings.get("test_mode"):
+    print("Serial Monitor: Test Mode enabled")
+    TEST_MODE = True
+del settings
 
 # Load the correct serial implementation based on TEST_MODE
 if not TEST_MODE:
@@ -21,7 +27,7 @@ else:
     import mock_serial as serial
 
 # List of baud rates to choose from when opening a serial port
-baud_rates = ["9600", "19200", "38400", "57600", "115200"]
+BAUD_RATES = ["9600", "19200", "38400", "57600", "115200"]
 
 
 class SerialMonitorWriteCommand(sublime_plugin.TextCommand):
@@ -145,18 +151,18 @@ class SerialMonitorCommand(sublime_plugin.WindowCommand):
 
         baud = self.settings.get("baud")
         index = -1
-        if baud in baud_rates:
-            index = baud_rates.index(str(baud))
+        if baud in BAUD_RATES:
+            index = BAUD_RATES.index(str(baud))
 
         # Callback function for the baud selection quick panel
         def _baud_selected(p_info, selected_index):
             if selected_index == -1:
                 return
-            p_info.baud = baud_rates[selected_index]
-            self.settings.set("baud", baud_rates[selected_index])
+            p_info.baud = BAUD_RATES[selected_index]
+            self.settings.set("baud", BAUD_RATES[selected_index])
             self._create_port(p_info)
 
-        self.window.show_quick_panel(baud_rates, partial(_baud_selected, port_info), selected_index=index)
+        self.window.show_quick_panel(BAUD_RATES, partial(_baud_selected, port_info), selected_index=index)
 
     def disconnect(self, port_info):
         """
