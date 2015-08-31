@@ -16,14 +16,18 @@ class SerialMonitorLayoutCommand(sublime_plugin.WindowCommand):
     ]
     layout_names = ["Left-Right", "Over-Under"]
 
-    def run(self):
+    def run(self, **args):
         def layout_selected(index):
             if index == -1:
                 return
             self.window.run_command("set_layout", self.layouts[index])
             self._arrange_views()
 
-        self.window.show_quick_panel(self.layout_names, layout_selected)
+        if "layout" in args:
+            idx = self.layout_names.index(args["layout"])
+            layout_selected(idx)
+        else:
+            self.window.show_quick_panel(self.layout_names, layout_selected)
 
     def _arrange_views(self):
         last_focused = self.window.active_view()

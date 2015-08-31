@@ -263,11 +263,15 @@ class SerialMonitorCommand(sublime_plugin.WindowCommand):
 
         :param port_info: The port info in order to open the serial port
         """
+        last_focused = self.window.active_view()
+        if self.window.num_groups() > 1:
+            self.window.focus_group(1)
         view = self.window.new_file()
         view.set_name("{0}_output.txt".format(port_info.comport))
         view.set_read_only(True)
-        serial_port = serial.Serial(None, port_info.baud, timeout=0.1)
+        self.window.focus_view(last_focused)
 
+        serial_port = serial.Serial(None, port_info.baud, timeout=0.1)
         sm_thread = serial_monitor_thread.SerialMonitor(port_info.comport, serial_port, view, self.window)
         self.open_ports[port_info.comport] = sm_thread
         sm_thread.start()
