@@ -1,0 +1,22 @@
+[
+    {
+        "id": "tools",
+        "children":
+        [
+            {
+                "caption": "Serial Monitor",
+                "children":
+                [
+                    { "caption": "Connect", 
+                        "command": "serial_monitor", "args": {"serial_command": "connect"}},
+                    { "caption": "Disconnect",
+                        "command": "serial_monitor", "args": {"serial_command": "disconnect"}},
+                    { "caption": "Write Line",
+                        "command": "serial_monitor", "args": {"serial_command": "write_line"}},
+                    { "caption": "Write File",
+                        "command": "serial_monitor", "args": {"serial_command": "write_file"}}
+                ]
+            }
+        ]
+    }
+]
