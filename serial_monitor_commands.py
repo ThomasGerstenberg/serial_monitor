@@ -214,7 +214,7 @@ class SerialMonitorCommand(sublime_plugin.WindowCommand):
 
         :param func: The function to wrap
         :param list_type: The type of list to use for selecting the comport
-        :type list_type: SerialMonitorCommand.PortListType
+        :type list_type: SerialMonitorCommand.PortListType or int
         """
         def f(port_info):
             open_port_names = sorted(self.open_ports)
