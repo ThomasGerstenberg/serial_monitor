@@ -8,5 +8,4 @@
     {"caption": "Serial Monitor: Write Line", "command": "serial_monitor", 
         "args": {"serial_command": "write_line"}},
     {"caption": "Serial Monitor: Layout", "command": "serial_monitor_layout"}
-
 ]
