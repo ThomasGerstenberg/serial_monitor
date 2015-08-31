@@ -114,7 +114,7 @@ class SerialMonitorCommand(sublime_plugin.WindowCommand):
 
         # Get the command and function callback to run
         try:
-            command = args.pop("serial_command") 
+            command = args.pop("serial_command")
         except KeyError:
             print("Missing serial_command argument")
             return
