@@ -36,7 +36,6 @@ class SerialMonitor(threading.Thread):
     def write_line(self, text):
         with self.text_lock:
             self.text_to_write.append(text)
-        print("Len: {0}".format(len(self.text_to_write)))
 
     def write_file(self, view, region):
         with self.file_lock:
@@ -67,7 +66,7 @@ class SerialMonitor(threading.Thread):
                     text = self.text_to_write.pop(0)
                     self._write_text_to_file(text)
 
-                    self.serial.write(text)
+                    self.serial.write(bytes(text))
                     self._read_serial()
 
             with self.file_lock:
@@ -80,7 +79,7 @@ class SerialMonitor(threading.Thread):
                     main_thread(self.view.run_command, "serial_monitor_write", {"view_id": view.id(),
                                                                                 "region_begin": region.begin(),
                                                                                 "region_end": region.end()})
-                    self.serial.write(self.view.substr(region))
+                    self.serial.write(bytes(self.view.substr(region)))
                     self._read_serial()
 
         # Thread terminated, write to buffer if still valid and close the serial port
