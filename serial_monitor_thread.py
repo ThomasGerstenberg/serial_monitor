@@ -45,7 +45,7 @@ class SerialMonitor(threading.Thread):
         self.running = False
 
     def _write_text_to_file(self, text):
-        main_thread(self.view.run_command, "serial_monitor_write", {"text": text})
+        main_thread(self.view.run_command, "serial_monitor_write", {"text": text.replace("\r", "")})
 
     def _read_serial(self):
         serial_input = self.serial.read(512)
