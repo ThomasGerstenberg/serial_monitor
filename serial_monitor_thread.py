@@ -64,7 +64,7 @@ class SerialMonitor(threading.Thread):
                 # Write any text in the queue to the serial port
                 while self.text_to_write:
                     text = self.text_to_write.pop(0)
-                    self._write_text_to_file(text)
+                    # self._write_text_to_file(text)
                     self.serial.write(bytes(text, encoding="ascii"))
                     self._read_serial()
 
@@ -75,10 +75,13 @@ class SerialMonitor(threading.Thread):
                     view = output_file["view"]
                     region = output_file["region"]
 
-                    main_thread(self.view.run_command, "serial_monitor_write", {"view_id": view.id(),
-                                                                                "region_begin": region.begin(),
-                                                                                "region_end": region.end()})
-                    self.serial.write(bytes(self.view.substr(region), encoding="ascii"))
+                    # main_thread(self.view.run_command, "serial_monitor_write", {"view_id": view.id(),
+                    #                                                             "region_begin": region.begin(),
+                    #                                                             "region_end": region.end()})
+                    text = view.substr(region)
+                    if text[-1] not in ["\r", "\n"]:
+                        text += "\n"
+                    self.serial.write(bytes(text, encoding="ascii"))
                     self._read_serial()
 
         # Thread terminated, write to buffer if still valid and close the serial port
