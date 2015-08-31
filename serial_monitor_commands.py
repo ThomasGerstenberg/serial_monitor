@@ -6,6 +6,7 @@ import sublime
 import sublime_plugin
 
 sys.path.append(os.path.dirname(__file__))
+sys.path.append(os.path.join(os.path.dirname(__file__), "serial"))
 
 import serial_monitor_thread
 
@@ -19,7 +20,6 @@ del settings
 
 # Load the correct serial implementation based on TEST_MODE
 if not TEST_MODE:
-    sys.path.append(os.path.join(os.path.dirname(__file__), "serial"))
     import serial
     from serial.tools import list_ports
 else:
@@ -46,6 +46,10 @@ class SerialMonitorWriteCommand(sublime_plugin.TextCommand):
         :type args: dict
         :return:
         """
+
+        # Check if the end of the output file is visible.  If so, enable the auto-scroll
+        should_autoscroll = self.view.visible_region().contains(self.view.size())
+
         self.view.set_read_only(False)
         if "text" in args:
             self.view.insert(edit, self.view.size(), args["text"])
@@ -56,6 +60,17 @@ class SerialMonitorWriteCommand(sublime_plugin.TextCommand):
             self.view.insert(edit, self.view.size(), view.substr(sublime.Region(begin, end)))
         self.view.set_read_only(True)
 
+        if should_autoscroll and not self.view.visible_region().contains(self.view.size()):
+            self.view.window().run_command("serial_monitor_scroll", {"view_id": self.view.id()})
+
+
+class SerialMonitorScrollCommand(sublime_plugin.WindowCommand):
+    def run(self, view_id):
+        last_focused = self.window.active_view()
+        view = sublime.View(view_id)
+        self.window.focus_view(view)
+        view.show(view.size())
+        self.window.focus_view(last_focused)
 
 class PortInfo(object):
     """

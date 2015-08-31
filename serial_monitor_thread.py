@@ -48,7 +48,7 @@ class SerialMonitor(threading.Thread):
         main_thread(self.view.run_command, "serial_monitor_write", {"text": text})
 
     def _read_serial(self):
-        serial_input = self.serial.read(100)
+        serial_input = self.serial.read(512)
         if serial_input:
             self._write_text_to_file(serial_input.decode(encoding="ascii"))
 
@@ -56,9 +56,6 @@ class SerialMonitor(threading.Thread):
         self.serial.port = self.comport
         self.serial.open()
         while self.running and self.view.is_valid():
-            # Update the window if the view moved at all
-            self.window = self.view.window()
-
             self._read_serial()
             with self.text_lock:
                 # Write any text in the queue to the serial port

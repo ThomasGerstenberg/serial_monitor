@@ -18,10 +18,11 @@ class Serial(SerialBase):
     def close(self):
         print("Comport closed: {0}".format(self.port))
 
-    def read(self, bytes):
-        time.sleep(1)
+    def read(self, size):
+        time.sleep(.2)
         self.i += 1
-        return "{0}, ".format(self.i)
+        text = "{0},\n".format(self.i)
+        return bytes(text, encoding="ascii")
 
     def write(self, text):
         print("Writing: \"{0}\"".format(text))
