@@ -12,7 +12,7 @@ class Serial(object):
         self.timeout = timeout
 
     def open(self):
-        print("Comport opened: {0}".format(self.port))
+        print("Comport opened: {0}, baud:{1}".format(self.port, self.baud))
 
     def close(self):
         print("Comport closed: {0}".format(self.port))

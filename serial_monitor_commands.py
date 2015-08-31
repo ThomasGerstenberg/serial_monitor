@@ -128,7 +128,8 @@ class SerialMonitorCommand(sublime_plugin.WindowCommand):
         if "text" in args:
             port_info.text = args["text"]
 
-        func(port_info)    
+        func(port_info)
+        sublime.save_settings(self.settings_name)
 
     def connect(self, port_info):
         """
