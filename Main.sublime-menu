@@ -14,7 +14,17 @@
                     { "caption": "Write Line",
                         "command": "serial_monitor", "args": {"serial_command": "write_line"}},
                     { "caption": "Write File",
-                        "command": "serial_monitor", "args": {"serial_command": "write_file"}}
+                        "command": "serial_monitor", "args": {"serial_command": "write_file"}},
+                    { 
+                        "caption": "Layout",
+                        "children":
+                        [
+                            { "caption": "Left/Right", 
+                                "command": "serial_monitor_layout", "args": {"layout": "Left-Right"}},
+                            { "caption": "Over/Under", 
+                                "command": "serial_monitor_layout", "args": {"layout": "Over-Under"}},
+                        ]
+                    }
                 ]
             }
         ]
