@@ -72,6 +72,7 @@ class SerialMonitorScrollCommand(sublime_plugin.WindowCommand):
         view.show(view.size())
         self.window.focus_view(last_focused)
 
+
 class PortInfo(object):
     """
     Class for storing information during serial port selection, creation, deletion, etc.
@@ -230,7 +231,9 @@ class SerialMonitorCommand(sublime_plugin.WindowCommand):
         if view in [sm.view for sm in self.open_ports.values()]:
             sublime.message_dialog("Cannot write output view to serial port")
             return
-        region = sublime.Region(0, view.size())
+        region = view.sel()[0]
+        if region.empty():
+            region = sublime.Region(0, view.size())
         self.open_ports[port_info.comport].write_file(view, region)
 
     def _select_port_wrapper(self, func, list_type):
