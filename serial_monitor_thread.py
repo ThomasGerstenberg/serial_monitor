@@ -15,6 +15,11 @@ def main_thread(callback, *args, **kwargs):
     # most sublime.[something] calls need to be on the main thread
     sublime.set_timeout(functools.partial(callback, *args, **kwargs), 0)
 
+class SerialMonitorWriteFileArgs(object):
+    def __init__(self, view, regions):
+        self.view = view
+        self.regions = regions
+
 
 class SerialMonitor(threading.Thread):
     """
@@ -37,9 +42,10 @@ class SerialMonitor(threading.Thread):
         with self.text_lock:
             self.text_to_write.append(text)
 
-    def write_file(self, view, region):
+    def write_file(self, view, selection):
+        file_args = SerialMonitorWriteFileArgs(view, selection)
         with self.file_lock:
-            self.file_to_write.append({"view": view, "region": region})
+            self.file_to_write.append(file_args)
 
     def disconnect(self):
         self.running = False
@@ -70,19 +76,18 @@ class SerialMonitor(threading.Thread):
                 # Write any files in the queue to the serial port
                 while self.file_to_write:
                     output_file = self.file_to_write.pop(0)
-                    view = output_file["view"]
-                    region = output_file["region"]
-                    # Commenting out local echo
-                    # main_thread(self.view.run_command, "serial_monitor_write", {"view_id": view.id(),
-                    #                                                             "region_begin": region.begin(),
-                    #                                                             "region_end": region.end()})
-                    text = view.substr(region)
-                    lines = text.splitlines(1)
-                    if not lines[-1].endswith("\n"):
-                        lines[-1] += "\n"
-                    for line in lines:
-                        self.serial.write(bytes(line, encoding="ascii"))
-                        self._read_serial()
+                    for region in output_file.regions:
+                        # Commenting out local echo
+                        # main_thread(self.view.run_command, "serial_monitor_write", {"view_id": view.id(),
+                        #                                                             "region_begin": region.begin(),
+                        #                                                             "region_end": region.end()})
+                        text = output_file.view.substr(region)
+                        lines = text.splitlines(1)
+                        if not lines[-1].endswith("\n"):
+                            lines[-1] += "\n"
+                        for line in lines:
+                            self.serial.write(bytes(line, encoding="ascii"))
+                            self._read_serial()
 
         # Thread terminated, write to buffer if still valid and close the serial port
         if self.view.is_valid():

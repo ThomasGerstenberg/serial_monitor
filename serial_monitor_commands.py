@@ -65,6 +65,9 @@ class SerialMonitorWriteCommand(sublime_plugin.TextCommand):
 
 
 class SerialMonitorScrollCommand(sublime_plugin.WindowCommand):
+    """
+    Scrolls to the end of a view
+    """
     def run(self, view_id):
         last_focused = self.window.active_view()
         view = sublime.View(view_id)
@@ -73,16 +76,17 @@ class SerialMonitorScrollCommand(sublime_plugin.WindowCommand):
         self.window.focus_view(last_focused)
 
 
-class PortInfo(object):
+class CommandArgs(object):
     """
     Class for storing information during serial port selection, creation, deletion, etc.
     """
-    def __init__(self, comport="", function_callback=None, port_list=None):
+    def __init__(self, comport="", baud=0, text="", function_callback=None, port_list=None, override_selection=False):
         self.comport = comport
-        self.baud = 0
-        self.text = ""
+        self.baud = baud
+        self.text = text
         self.port_list = port_list
         self.callback = function_callback
+        self.override_selection = override_selection
 
 
 class SerialMonitorCommand(sublime_plugin.WindowCommand):
@@ -97,6 +101,8 @@ class SerialMonitorCommand(sublime_plugin.WindowCommand):
         "comport": "COM1" - Comport to connect, disconnect, write, etc.
         "baud": 57600 - Baud rate to use for the "connect" command
         "text": "string" - text to write for the "write_line" command (newline appended automatically)
+        "override_selection": true - use this to indicate that whenever writing a file, 
+                                     always write the whole file and not just the selection
     """
 
     class PortListType(object):
@@ -122,47 +128,35 @@ class SerialMonitorCommand(sublime_plugin.WindowCommand):
         self.open_ports = {}
         self.available_ports = []
 
-    def run(self, **args):
+    def run(self, serial_command, comport="", baud=0, text="", override_selection=False, **args):
         self.settings = sublime.load_settings(self.settings_name)
 
         # Get a list of the available ports that aren't currently open
         self.available_ports = [c[0] for c in list_ports.comports() if c[0] not in self.open_ports]
 
-        # Get the command and function callback to run
         try:
-            command = args.pop("serial_command")
+            func = self.arg_map[serial_command]
         except KeyError:
-            print("Missing serial_command argument")
-            return
-        try:
-            func = self.arg_map[command]
-        except KeyError:
-            print("Unknown serial command: {0}".format(command))
+            print("Unknown serial command: {0}".format(serial_command))
             return
 
-        # Create a port info object to pass in the args
-        port_info = PortInfo()
-        # If the args specify the comport or baud, get that now
-        if "comport" in args:
-            port_info.comport = args["comport"]
-        if "baud" in args:
-            port_info.baud = int(args["baud"])
-        if "text" in args:
-            port_info.text = args["text"]
+        # Create a CommandArgs object to pass around the args
+        command_args = CommandArgs(comport=str(comport), baud=int(baud), text=str(text),
+                                   function_callback=func, override_selection=bool(override_selection))
 
-        func(port_info)
+        func(command_args)
         sublime.save_settings(self.settings_name)
 
-    def connect(self, port_info):
+    def connect(self, command_args):
         """
         Handler for the "connect" command.  Is wrapped in the _select_port_wrapper to get the comport from the user
 
-        :param port_info: The info of the port to connect to
-        :type port_info: PortInfo
+        :param command_args: The info of the port to connect to
+        :type command_args: CommandArgs
         """
         # If baud is already set, continue to port creation
-        if port_info.baud != 0:
-            self._create_port(port_info)
+        if command_args.baud != 0:
+            self._create_port(command_args)
             return
 
         baud = self.settings.get("baud")
@@ -178,35 +172,35 @@ class SerialMonitorCommand(sublime_plugin.WindowCommand):
             self.settings.set("baud", BAUD_RATES[selected_index])
             self._create_port(p_info)
 
-        self.window.show_quick_panel(BAUD_RATES, partial(_baud_selected, port_info), selected_index=index)
+        self.window.show_quick_panel(BAUD_RATES, partial(_baud_selected, command_args), selected_index=index)
 
-    def disconnect(self, port_info):
+    def disconnect(self, command_args):
         """
         Handler for the "disconnect" command.  Is wrapped in the _select_port_wrapper to get the comport from the user
 
-        :param port_info: The info of the port to disconnect from
-        :type port_info: PortInfo
+        :param command_args: The info of the port to disconnect from
+        :type command_args: CommandArgs
         """
-        self.open_ports[port_info.comport].disconnect()
+        self.open_ports[command_args.comport].disconnect()
 
-    def disconnected(self, port_info):
+    def disconnected(self, command_args):
         """
         Handler for the "_port_closed" command.  This function should only be called by the SerialMonitorThread class
         to inform that the port has been closed
 
-        :param port_info: The info of the port that was disconnected
-        :type port_info: PortInfo
+        :param command_args: The info of the port that was disconnected
+        :type command_args: CommandArgs
         """
-        sublime.status_message("Disconnected from {0}".format(port_info.comport))
-        if port_info.comport in self.open_ports:
-            self.open_ports.pop(port_info.comport)
+        sublime.status_message("Disconnected from {0}".format(command_args.comport))
+        if command_args.comport in self.open_ports:
+            self.open_ports.pop(command_args.comport)
 
-    def write_line(self, port_info):
+    def write_line(self, command_args):
         """
         Handler for the "write_line" command.  Is wrapped in the _select_port_wrapper to get the comport from the user
 
-        :param port_info: The info of the port to write to
-        :type port_info: PortInfo
+        :param command_args: The info of the port to write to
+        :type command_args: CommandArgs
         """
 
         # Callback to send the text to the SerialMonitorThread that handles the read/write for the port
@@ -215,26 +209,36 @@ class SerialMonitorCommand(sublime_plugin.WindowCommand):
             self.write_line(p_info)
 
         # Text was already specified from the command args, skip the user input
-        if port_info.text:
-            _text_entered(port_info, port_info.text)
+        if command_args.text:
+            _text_entered(command_args, command_args.text)
         else:
-            self.window.show_input_panel("Enter Text:", "", partial(_text_entered, port_info), None, None)
+            self.window.show_input_panel("Enter Text:", "", partial(_text_entered, command_args), None, None)
 
-    def write_file(self, port_info):
+    def write_file(self, command_args):
         """
         Handler for the "write_file" command.  Is wrapped in the _select_port_wrapper to get the comport from the user
 
-        :param port_info: The info of the port to write to
-        :type port_info: PortInfo
+        :param command_args: The info of the port to write to
+        :type command_args: CommandArgs
         """
         view = self.window.active_view()
         if view in [sm.view for sm in self.open_ports.values()]:
             sublime.message_dialog("Cannot write output view to serial port")
             return
-        region = view.sel()[0]
-        if region.empty():
-            region = sublime.Region(0, view.size())
-        self.open_ports[port_info.comport].write_file(view, region)
+
+        regions = []
+        selection = view.sel()
+        # if there's only one selection and is empty (or user wants to override selection regions),
+        # set the list to the whole file
+        if len(selection) == 1 and selection[0].empty() or command_args.override_selection:
+            regions.append(sublime.Region(0, view.size()))
+        else:
+            regions = [r for r in selection if not r.empty()]  # disregard any empty regions
+        self.open_ports[command_args.comport].write_file(view, regions)
+
+        # if we still ended up with an empty list (i.e. all regions in selection were empty), send the whole file
+        if not regions:
+            regions.append(sublime.Region(0, view.size()))
 
     def _select_port_wrapper(self, func, list_type):
         """
@@ -244,7 +248,7 @@ class SerialMonitorCommand(sublime_plugin.WindowCommand):
         :param list_type: The type of list to use for selecting the comport
         :type list_type: SerialMonitorCommand.PortListType or int
         """
-        def f(port_info):
+        def f(command_args):
             open_port_names = sorted(self.open_ports)
 
             if list_type == self.PortListType.AVAILABLE:
@@ -256,23 +260,23 @@ class SerialMonitorCommand(sublime_plugin.WindowCommand):
                 sublime.message_dialog("No ports available")
                 return
 
-            port_info.callback = func
-            port_info.port_list = port_list
+            command_args.callback = func
+            command_args.port_list = port_list
 
             # If the comport is alredy specified, skip the selection process
-            if port_info.comport:
-                port_info.callback(port_info)
+            if command_args.comport:
+                command_args.callback(command_args)
                 return
             # If there's only one port in the list, skip the selection process
-            if len(port_info.port_list) == 1:
-                port_info.comport = port_info.port_list[0]
-                port_info.callback(port_info)
+            if len(command_args.port_list) == 1:
+                command_args.comport = command_args.port_list[0]
+                command_args.callback(command_args)
                 return
 
             index = -1
             comport = self.settings.get("comport")
-            if comport in port_info.port_list:
-                index = port_info.port_list.index(comport)
+            if comport in command_args.port_list:
+                index = command_args.port_list.index(comport)
 
             # Callback function for the port selection quick panel
             def _port_selected(p_info, selected_index):
@@ -281,26 +285,26 @@ class SerialMonitorCommand(sublime_plugin.WindowCommand):
                 p_info.comport = p_info.port_list[selected_index]
                 self.settings.set("comport", p_info.comport)
                 p_info.callback(p_info)
-            self.window.show_quick_panel(port_info.port_list, partial(_port_selected, port_info), selected_index=index)
+            self.window.show_quick_panel(command_args.port_list, partial(_port_selected, command_args), selected_index=index)
         return f
 
-    def _create_port(self, port_info):
+    def _create_port(self, command_args):
         """
         Creates and starts a SerialMonitorThread with the port info given
 
-        :param port_info: The port info in order to open the serial port
+        :param command_args: The port info in order to open the serial port
         """
         last_focused = self.window.active_view()
         if self.window.num_groups() > 1:
             self.window.focus_group(1)
         view = self.window.new_file()
-        view.set_name("{0}_output.txt".format(port_info.comport))
+        view.set_name("{0}_output.txt".format(command_args.comport))
         view.set_read_only(True)
         self.window.focus_view(last_focused)
 
-        serial_port = serial.Serial(None, port_info.baud, timeout=0.1)
-        sm_thread = serial_monitor_thread.SerialMonitor(port_info.comport, serial_port, view, self.window)
-        self.open_ports[port_info.comport] = sm_thread
+        serial_port = serial.Serial(None, command_args.baud, timeout=0.1)
+        sm_thread = serial_monitor_thread.SerialMonitor(command_args.comport, serial_port, view, self.window)
+        self.open_ports[command_args.comport] = sm_thread
         sm_thread.start()
 
-        sublime.status_message("Starting serial monitor on {0}".format(port_info.comport))
+        sublime.status_message("Starting serial monitor on {0}".format(command_args.comport))
