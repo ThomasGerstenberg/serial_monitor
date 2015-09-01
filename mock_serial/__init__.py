@@ -8,6 +8,7 @@ class Serial(SerialBase):
     def __init__(self, comport, baud, timeout=1, **kwargs):
         super(Serial, self).__init__(comport, baud, timeout=timeout, **kwargs)
         self.i = 0
+        self.echo = ""
 
     def _reconfigurePort(self):
         pass
@@ -22,7 +23,13 @@ class Serial(SerialBase):
         time.sleep(.2)
         self.i += 1
         text = "{0},\n".format(self.i)
-        return bytes(text, encoding="ascii")
+        if self.echo:
+            retval = self.echo
+        else:
+            retval = bytes(text, encoding="ascii")
+        self.echo = ""
+        return retval
 
     def write(self, text):
+        self.echo = text
         print("Writing: \"{0}\"".format(text))

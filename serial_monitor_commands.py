@@ -227,6 +227,9 @@ class SerialMonitorCommand(sublime_plugin.WindowCommand):
         :type port_info: PortInfo
         """
         view = self.window.active_view()
+        if view in [sm.view for sm in self.open_ports.values()]:
+            sublime.message_dialog("Cannot write output view to serial port")
+            return
         region = sublime.Region(0, view.size())
         self.open_ports[port_info.comport].write_file(view, region)
 
