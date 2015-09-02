@@ -69,11 +69,11 @@ class SerialMonitorScrollCommand(sublime_plugin.WindowCommand):
     Scrolls to the end of a view
     """
     def run(self, view_id):
-        last_focused = self.window.active_view()
+        last_focused = sublime.active_window().active_view()
         view = sublime.View(view_id)
-        self.window.focus_view(view)
+        sublime.active_window().focus_view(view)
         view.show(view.size())
-        self.window.focus_view(last_focused)
+        sublime.active_window().focus_view(last_focused)
 
 
 class CommandArgs(object):
@@ -89,7 +89,7 @@ class CommandArgs(object):
         self.override_selection = override_selection
 
 
-class SerialMonitorCommand(sublime_plugin.WindowCommand):
+class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
     """
     Main class for running commands using the serial monitor.  Available commands
         "serial_command": "connect" - Brings up dialogs to connect to a serial port
@@ -112,8 +112,8 @@ class SerialMonitorCommand(sublime_plugin.WindowCommand):
         AVAILABLE = 0
         OPEN = 1
 
-    def __init__(self, args):
-        super(SerialMonitorCommand, self).__init__(args)
+    def __init__(self):
+        super(SerialMonitorCommand, self).__init__()
         self.settings = None
         self.settings_name = "serial_monitor.sublime-settings"
 
@@ -172,7 +172,8 @@ class SerialMonitorCommand(sublime_plugin.WindowCommand):
             self.settings.set("baud", BAUD_RATES[selected_index])
             self._create_port(p_info)
 
-        self.window.show_quick_panel(BAUD_RATES, partial(_baud_selected, command_args), selected_index=index)
+        sublime.active_window().show_quick_panel(BAUD_RATES, partial(_baud_selected, command_args),
+                                                 selected_index=index)
 
     def disconnect(self, command_args):
         """
@@ -212,7 +213,8 @@ class SerialMonitorCommand(sublime_plugin.WindowCommand):
         if command_args.text:
             _text_entered(command_args, command_args.text)
         else:
-            self.window.show_input_panel("Enter Text:", "", partial(_text_entered, command_args), None, None)
+            sublime.active_window().show_input_panel("Enter Text:", "", partial(_text_entered, command_args),
+                                                     None, None)
 
     def write_file(self, command_args):
         """
@@ -221,7 +223,7 @@ class SerialMonitorCommand(sublime_plugin.WindowCommand):
         :param command_args: The info of the port to write to
         :type command_args: CommandArgs
         """
-        view = self.window.active_view()
+        view = sublime.active_window().active_view()
         if view in [sm.view for sm in self.open_ports.values()]:
             sublime.message_dialog("Cannot write output view to serial port")
             return
@@ -285,7 +287,8 @@ class SerialMonitorCommand(sublime_plugin.WindowCommand):
                 p_info.comport = p_info.port_list[selected_index]
                 self.settings.set("comport", p_info.comport)
                 p_info.callback(p_info)
-            self.window.show_quick_panel(command_args.port_list, partial(_port_selected, command_args), selected_index=index)
+            sublime.active_window().show_quick_panel(command_args.port_list, partial(_port_selected, command_args),
+                                                     selected_index=index)
         return f
 
     def _create_port(self, command_args):
@@ -294,16 +297,16 @@ class SerialMonitorCommand(sublime_plugin.WindowCommand):
 
         :param command_args: The port info in order to open the serial port
         """
-        last_focused = self.window.active_view()
-        if self.window.num_groups() > 1:
-            self.window.focus_group(1)
-        view = self.window.new_file()
+        last_focused = sublime.active_window().active_view()
+        if sublime.active_window().num_groups() > 1:
+            sublime.active_window().focus_group(1)
+        view = sublime.active_window().new_file()
         view.set_name("{0}_output.txt".format(command_args.comport))
         view.set_read_only(True)
-        self.window.focus_view(last_focused)
+        sublime.active_window().focus_view(last_focused)
 
         serial_port = serial.Serial(None, command_args.baud, timeout=0.1)
-        sm_thread = serial_monitor_thread.SerialMonitor(command_args.comport, serial_port, view, self.window)
+        sm_thread = serial_monitor_thread.SerialMonitor(command_args.comport, serial_port, view, sublime.active_window())
         self.open_ports[command_args.comport] = sm_thread
         sm_thread.start()
 
