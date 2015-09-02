@@ -162,7 +162,7 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         baud = self.settings.get("baud")
         index = -1
         if baud in BAUD_RATES:
-            index = BAUD_RATES.index(str(baud)) or -1
+            index = BAUD_RATES.index(str(baud))
 
         # Callback function for the baud selection quick panel
         def _baud_selected(p_info, selected_index):
