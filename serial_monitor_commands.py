@@ -101,7 +101,7 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         "comport": "COM1" - Comport to connect, disconnect, write, etc.
         "baud": 57600 - Baud rate to use for the "connect" command
         "text": "string" - text to write for the "write_line" command (newline appended automatically)
-        "override_selection": true - use this to indicate that whenever writing a file, 
+        "override_selection": true - use this to indicate that whenever writing a file,
                                      always write the whole file and not just the selection
     """
 
@@ -206,6 +206,9 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
 
         # Callback to send the text to the SerialMonitorThread that handles the read/write for the port
         def _text_entered(p_info, text):
+            sublime.active_window().run_command("serial_monitor_scroll",
+                                                {"view_id": self.open_ports[p_info.comport].view.id()})
+
             self.open_ports[p_info.comport].write_line(text + "\n")
             self.write_line(p_info)
 
@@ -235,11 +238,13 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
             regions = [sublime.Region(0, view.size())]
         else:
             regions = [r for r in selection if not r.empty()]  # disregard any empty regions
-        self.open_ports[command_args.comport].write_file(view, regions)
-
         # if we still ended up with an empty list (i.e. all regions in selection were empty), send the whole file
         if not regions:
             regions.append(sublime.Region(0, view.size()))
+
+        sublime.active_window().run_command("serial_monitor_scroll",
+                                            {"view_id": self.open_ports[command_args.comport].view.id()})
+        self.open_ports[command_args.comport].write_file(view, regions)
 
     def _select_port_wrapper(self, func, list_type):
         """
