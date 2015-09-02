@@ -69,11 +69,11 @@ class SerialMonitorScrollCommand(sublime_plugin.WindowCommand):
     Scrolls to the end of a view
     """
     def run(self, view_id):
-        last_focused = sublime.active_window().active_view()
+        last_focused = self.window.active_view()
         view = sublime.View(view_id)
-        sublime.active_window().focus_view(view)
+        self.window.focus_view(view)
         view.show(view.size())
-        sublime.active_window().focus_view(last_focused)
+        self.window.focus_view(last_focused)
 
 
 class CommandArgs(object):
@@ -162,7 +162,7 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         baud = self.settings.get("baud")
         index = -1
         if baud in BAUD_RATES:
-            index = BAUD_RATES.index(str(baud))
+            index = BAUD_RATES.index(str(baud)) or -1
 
         # Callback function for the baud selection quick panel
         def _baud_selected(p_info, selected_index):
@@ -228,12 +228,11 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
             sublime.message_dialog("Cannot write output view to serial port")
             return
 
-        regions = []
         selection = view.sel()
         # if there's only one selection and is empty (or user wants to override selection regions),
         # set the list to the whole file
-        if len(selection) == 1 and selection[0].empty() or command_args.override_selection:
-            regions.append(sublime.Region(0, view.size()))
+        if (len(selection) == 1 and selection[0].empty()) or command_args.override_selection:
+            regions = [sublime.Region(0, view.size())]
         else:
             regions = [r for r in selection if not r.empty()]  # disregard any empty regions
         self.open_ports[command_args.comport].write_file(view, regions)
@@ -297,16 +296,17 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
 
         :param command_args: The port info in order to open the serial port
         """
-        last_focused = sublime.active_window().active_view()
-        if sublime.active_window().num_groups() > 1:
-            sublime.active_window().focus_group(1)
-        view = sublime.active_window().new_file()
+        window = sublime.active_window()
+        last_focused = window.active_view()
+        if window.num_groups() > 1:
+            window.focus_group(1)
+        view = window.new_file()
         view.set_name("{0}_output.txt".format(command_args.comport))
         view.set_read_only(True)
-        sublime.active_window().focus_view(last_focused)
+        window.focus_view(last_focused)
 
         serial_port = serial.Serial(None, command_args.baud, timeout=0.1)
-        sm_thread = serial_monitor_thread.SerialMonitor(command_args.comport, serial_port, view, sublime.active_window())
+        sm_thread = serial_monitor_thread.SerialMonitor(command_args.comport, serial_port, view, window)
         self.open_ports[command_args.comport] = sm_thread
         sm_thread.start()
 
