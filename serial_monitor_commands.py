@@ -9,6 +9,7 @@ sys.path.append(os.path.dirname(__file__))
 sys.path.append(os.path.join(os.path.dirname(__file__), "serial"))
 
 import serial_monitor_thread
+from history import History
 
 # Check if test mode is enabled
 TEST_MODE = False
@@ -29,6 +30,7 @@ else:
 # List of baud rates to choose from when opening a serial port
 BAUD_RATES = ["9600", "19200", "38400", "57600", "115200"]
 
+entry_history = History()
 
 class SerialMonitorWriteCommand(sublime_plugin.TextCommand):
     """
@@ -74,6 +76,26 @@ class SerialMonitorScrollCommand(sublime_plugin.WindowCommand):
         self.window.focus_view(view)
         view.show(view.size())
         self.window.focus_view(last_focused)
+
+class SerialMonitorUpdateEntryCommand(sublime_plugin.TextCommand):
+    def run(self, edit, text):
+        self.view.erase(edit, sublime.Region(0, self.view.size()))
+        self.view.insert(edit, 0, text)
+
+class SerialMonitorEventListener(sublime_plugin.EventListener):
+    def on_text_command(self, view, command, cmd_args):
+        if view.settings().get("serial_input"):
+            if command == "move" and cmd_args["by"] == "pages":
+                if not cmd_args["forward"] and entry_history.has_next():
+                    text = entry_history.get_next()
+                    command = "serial_monitor_update_entry"
+                    cmd_args = {"text": text}
+                    return (command, cmd_args)
+                elif cmd_args["forward"] and entry_history.has_previous():
+                    text = entry_history.get_previous()
+                    command = "serial_monitor_update_entry"
+                    cmd_args = {"text": text}
+                    return (command, cmd_args)
 
 
 class CommandArgs(object):
@@ -206,18 +228,23 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
 
         # Callback to send the text to the SerialMonitorThread that handles the read/write for the port
         def _text_entered(p_info, text):
-            sublime.active_window().run_command("serial_monitor_scroll",
-                                                {"view_id": self.open_ports[p_info.comport].view.id()})
-
+            output_view = self.open_ports[p_info.comport].view
+            output_view.window().run_command("serial_monitor_scroll", {"view_id": output_view.id()})
             self.open_ports[p_info.comport].write_line(text + "\n")
             self.write_line(p_info)
+            entry_history.add_entry(text)
+
+        def _text_changed(text):
+            if text and text[-1] == '\n':
+                _text_entered(command_args, text[:-1])
 
         # Text was already specified from the command args, skip the user input
         if command_args.text:
             _text_entered(command_args, command_args.text)
         else:
-            sublime.active_window().show_input_panel("Enter Text:", "", partial(_text_entered, command_args),
-                                                     None, None)
+            input_view = sublime.active_window().show_input_panel("Enter Text:", "", partial(_text_entered, command_args),
+                                                                  _text_changed, None)
+            input_view.settings().set("serial_input", True)
 
     def write_file(self, command_args):
         """
@@ -242,8 +269,8 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         if not regions:
             regions.append(sublime.Region(0, view.size()))
 
-        sublime.active_window().run_command("serial_monitor_scroll",
-                                            {"view_id": self.open_ports[command_args.comport].view.id()})
+        output_view = self.open_ports[command_args.comport].view
+        output_view.window().run_command("serial_monitor_scroll", {"view_id": output_view.id()})
         self.open_ports[command_args.comport].write_file(view, regions)
 
     def _select_port_wrapper(self, func, list_type):
