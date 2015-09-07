@@ -10,8 +10,11 @@ Commands are accessed through `Tools->Serial Monitor` or the Command Palette (`c
 - `Disconnect`: Brings up a list of connected comports to disconnect from.  If multiple comports are connected, brings up a list of the open comports to choose which to disconnect
 
 - `Write Line`: Brings up an input box at the bottom of the window to write a line to a comport.  If multiple comports are connected, brings up a list of open comports to choose first
+  - Command/Write history is saved.  In the input box, use `Page Up` and `Page Down` to cycle through past entries
 
-- `Write File`: Writes the active file to a comport.  If one or more regions are highlighted on the file, the selected text will be sent instead of the whole file.  If multiple comports are connected, brings up a list of open comports to choose first
+- `Write File`: Writes the active file to a comport. If multiple comports are connected, brings up a list of open comports to choose first
+
+- `Write Selection(s)`: Writes the selected text to the comport.  Supports multiple selection regions (each selection will be on its own line).  If no text is selected, writes the whole file.  If multiple comports are connected, brings up a list of open comports to choose first
 
 - `Layout`: Switches the layout of the sublime window.  Left/Right puts all input files on the left and serial files on the right, Over/Under puts all input files on the top and output on the bottom
 

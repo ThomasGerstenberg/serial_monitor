@@ -13,8 +13,10 @@
                         "command": "serial_monitor", "args": {"serial_command": "disconnect"}},
                     { "caption": "Write Line",
                         "command": "serial_monitor", "args": {"serial_command": "write_line"}},
-                    { "caption": "Write File",
-                        "command": "serial_monitor", "args": {"serial_command": "write_file"}},
+                    { "caption": "Write File", "command": "serial_monitor", 
+                        "args": {"serial_command": "write_file", "override_selection": true}},
+                    { "caption": "Write Selection(s)", "command": "serial_monitor", 
+                        "args": {"serial_command": "write_file"}},
                     { 
                         "caption": "Layout",
                         "children":

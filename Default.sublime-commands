@@ -4,6 +4,8 @@
     {"caption": "Serial Monitor: Disconnect", "command": "serial_monitor", 
         "args": {"serial_command": "disconnect"}},
     {"caption": "Serial Monitor: Write File", "command": "serial_monitor", 
+        "args": {"serial_command": "write_file", "override_selection": true}},
+    {"caption": "Serial Monitor: Write Selection(s)", "command": "serial_monitor", 
         "args": {"serial_command": "write_file"}},
     {"caption": "Serial Monitor: Write Line", "command": "serial_monitor", 
         "args": {"serial_command": "write_line"}},

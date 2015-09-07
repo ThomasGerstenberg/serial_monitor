@@ -9,7 +9,7 @@ sys.path.append(os.path.dirname(__file__))
 sys.path.append(os.path.join(os.path.dirname(__file__), "serial"))
 
 import serial_monitor_thread
-from history import History
+from command_history import CommandHistory
 
 # Check if test mode is enabled
 TEST_MODE = False
@@ -30,72 +30,25 @@ else:
 # List of baud rates to choose from when opening a serial port
 BAUD_RATES = ["9600", "19200", "38400", "57600", "115200"]
 
-entry_history = History()
+entry_history = CommandHistory()
 
-class SerialMonitorWriteCommand(sublime_plugin.TextCommand):
-    """
-    Writes text (or a file) to the serial output view the command is run on
-    """
-    def run(self, edit, **args):
-        """
-        Runs the command to write to a serial output view
-        :param args: The args for writing to the view.  Needs to contain:
-                    "text": string of text to write to the view
-                    or
-                    "view_id": The id of the input view
-                    "region_begin": Starting index for the input view
-                    "region_end": Ending index for the input view
-        :type args: dict
-        :return:
-        """
-
-        # Check if the end of the output file is visible.  If so, enable the auto-scroll
-        should_autoscroll = self.view.visible_region().contains(self.view.size())
-
-        self.view.set_read_only(False)
-        if "text" in args:
-            self.view.insert(edit, self.view.size(), args["text"])
-        else:
-            view = sublime.View(args["view_id"])
-            begin = args["region_begin"]
-            end = args["region_end"]
-            self.view.insert(edit, self.view.size(), view.substr(sublime.Region(begin, end)))
-        self.view.set_read_only(True)
-
-        if should_autoscroll and not self.view.visible_region().contains(self.view.size()):
-            self.view.window().run_command("serial_monitor_scroll", {"view_id": self.view.id()})
-
-
-class SerialMonitorScrollCommand(sublime_plugin.WindowCommand):
-    """
-    Scrolls to the end of a view
-    """
-    def run(self, view_id):
-        last_focused = self.window.active_view()
-        view = sublime.View(view_id)
-        self.window.focus_view(view)
-        view.show(view.size())
-        self.window.focus_view(last_focused)
-
-class SerialMonitorUpdateEntryCommand(sublime_plugin.TextCommand):
-    def run(self, edit, text):
-        self.view.erase(edit, sublime.Region(0, self.view.size()))
-        self.view.insert(edit, 0, text)
 
 class SerialMonitorEventListener(sublime_plugin.EventListener):
     def on_text_command(self, view, command, cmd_args):
         if view.settings().get("serial_input"):
             if command == "move" and cmd_args["by"] == "pages":
+                # Page Up was pressed and there's more entries in the history
                 if not cmd_args["forward"] and entry_history.has_next():
                     text = entry_history.get_next()
                     command = "serial_monitor_update_entry"
                     cmd_args = {"text": text}
-                    return (command, cmd_args)
+                    return command, cmd_args
+                # Page Down was pressed and there are more entries in the history
                 elif cmd_args["forward"] and entry_history.has_previous():
                     text = entry_history.get_previous()
                     command = "serial_monitor_update_entry"
                     cmd_args = {"text": text}
-                    return (command, cmd_args)
+                    return command, cmd_args
 
 
 class CommandArgs(object):
@@ -234,9 +187,11 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
             self.write_line(p_info)
             entry_history.add_entry(text)
 
+        # Callback for when text was entered into the input panel.  
+        # If the user enters a newline (shift+enter), send it to the serial port since the entry is single lined
         def _text_changed(text):
             if text and text[-1] == '\n':
-                _text_entered(command_args, text[:-1])
+                _text_entered(command_args, text[:-1])  # Strip the newline from the end since it'll be appended by _text_entered
 
         # Text was already specified from the command args, skip the user input
         if command_args.text:
@@ -244,7 +199,7 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         else:
             input_view = sublime.active_window().show_input_panel("Enter Text:", "", partial(_text_entered, command_args),
                                                                   _text_changed, None)
-            input_view.settings().set("serial_input", True)
+            input_view.settings().set("serial_input", True)  # Add setting to the view so it can be found by the event listener
 
     def write_file(self, command_args):
         """
@@ -337,6 +292,7 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         view.set_read_only(True)
         window.focus_view(last_focused)
 
+        # Create the serial port without specifying the comport so it does not automatically open
         serial_port = serial.Serial(None, command_args.baud, timeout=0.1)
         sm_thread = serial_monitor_thread.SerialMonitor(command_args.comport, serial_port, view, window)
         self.open_ports[command_args.comport] = sm_thread
