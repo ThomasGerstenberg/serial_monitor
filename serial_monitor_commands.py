@@ -35,20 +35,18 @@ entry_history = CommandHistory()
 
 class SerialMonitorEventListener(sublime_plugin.EventListener):
     def on_text_command(self, view, command, cmd_args):
+        """
+        Runs every time a text command is executed on a view.  If the view is the "serial input" view and
+        the command is Page Up/Down, replace the command with the serial monitor update entry command
+        """
         if view.settings().get("serial_input"):
             if command == "move" and cmd_args["by"] == "pages":
                 # Page Up was pressed and there's more entries in the history
                 if not cmd_args["forward"] and entry_history.has_next():
-                    text = entry_history.get_next()
-                    command = "serial_monitor_update_entry"
-                    cmd_args = {"text": text}
-                    return command, cmd_args
+                    return "serial_monitor_update_entry", {"text": entry_history.get_next()}
                 # Page Down was pressed and there are more entries in the history
                 elif cmd_args["forward"] and entry_history.has_previous():
-                    text = entry_history.get_previous()
-                    command = "serial_monitor_update_entry"
-                    cmd_args = {"text": text}
-                    return command, cmd_args
+                    return "serial_monitor_update_entry", {"text": entry_history.get_previous()}
 
 
 class CommandArgs(object):
@@ -105,7 +103,6 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
 
     def run(self, serial_command, comport="", baud=0, text="", override_selection=False, **args):
         self.settings = sublime.load_settings(self.settings_name)
-
         # Get a list of the available ports that aren't currently open
         self.available_ports = [c[0] for c in list_ports.comports() if c[0] not in self.open_ports]
 
@@ -118,7 +115,6 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         # Create a CommandArgs object to pass around the args
         command_args = CommandArgs(comport=str(comport), baud=int(baud), text=str(text),
                                    function_callback=func, override_selection=bool(override_selection))
-
         func(command_args)
         sublime.save_settings(self.settings_name)
 
@@ -141,7 +137,7 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
 
         # Callback function for the baud selection quick panel
         def _baud_selected(p_info, selected_index):
-            if selected_index == -1:
+            if selected_index == -1:  # Cancelled
                 return
             p_info.baud = BAUD_RATES[selected_index]
             self.settings.set("baud", BAUD_RATES[selected_index])
@@ -180,25 +176,24 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         """
 
         # Callback to send the text to the SerialMonitorThread that handles the read/write for the port
-        def _text_entered(p_info, text):
-            output_view = self.open_ports[p_info.comport].view
+        def _text_entered(text):
+            output_view = self.open_ports[command_args.comport].view
             output_view.window().run_command("serial_monitor_scroll", {"view_id": output_view.id()})
-            self.open_ports[p_info.comport].write_line(text + "\n")
-            self.write_line(p_info)
+            self.open_ports[command_args.comport].write_line(text + "\n")
+            self.write_line(command_args)
             entry_history.add_entry(text)
 
         # Callback for when text was entered into the input panel.  
         # If the user enters a newline (shift+enter), send it to the serial port since the entry is single lined
         def _text_changed(text):
             if text and text[-1] == '\n':
-                _text_entered(command_args, text[:-1])  # Strip the newline from the end since it'll be appended by _text_entered
+                _text_entered(text[:-1])  # Strip the newline from the end since it'll be appended by _text_entered
 
         # Text was already specified from the command args, skip the user input
         if command_args.text:
-            _text_entered(command_args, command_args.text)
+            _text_entered(command_args.text)
         else:
-            input_view = sublime.active_window().show_input_panel("Enter Text:", "", partial(_text_entered, command_args),
-                                                                  _text_changed, None)
+            input_view = sublime.active_window().show_input_panel("Enter Text:", "", _text_entered, _text_changed, None)
             input_view.settings().set("serial_input", True)  # Add setting to the view so it can be found by the event listener
 
     def write_file(self, command_args):
@@ -220,7 +215,7 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
             regions = [sublime.Region(0, view.size())]
         else:
             regions = [r for r in selection if not r.empty()]  # disregard any empty regions
-        # if we still ended up with an empty list (i.e. all regions in selection were empty), send the whole file
+        # if still ended up with an empty list (i.e. all regions in selection were empty), send the whole file
         if not regions:
             regions.append(sublime.Region(0, view.size()))
 
@@ -236,7 +231,7 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         :param list_type: The type of list to use for selecting the comport
         :type list_type: SerialMonitorCommand.PortListType or int
         """
-        def f(command_args):
+        def wrapper(command_args):
             open_port_names = sorted(self.open_ports)
 
             if list_type == self.PortListType.AVAILABLE:
@@ -251,7 +246,7 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
             command_args.callback = func
             command_args.port_list = port_list
 
-            # If the comport is alredy specified, skip the selection process
+            # If the comport is already specified, skip the selection process
             if command_args.comport:
                 command_args.callback(command_args)
                 return
@@ -268,14 +263,14 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
 
             # Callback function for the port selection quick panel
             def _port_selected(p_info, selected_index):
-                if selected_index == -1:
+                if selected_index == -1:  # Cancelled
                     return
                 p_info.comport = p_info.port_list[selected_index]
                 self.settings.set("comport", p_info.comport)
                 p_info.callback(p_info)
             sublime.active_window().show_quick_panel(command_args.port_list, partial(_port_selected, command_args),
                                                      selected_index=index)
-        return f
+        return wrapper
 
     def _create_port(self, command_args):
         """
