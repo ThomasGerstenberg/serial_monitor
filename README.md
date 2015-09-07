@@ -10,6 +10,7 @@ Commands are accessed through `Tools->Serial Monitor` or the Command Palette (`c
 - `Disconnect`: Brings up a list of connected comports to disconnect from.  If multiple comports are connected, brings up a list of the open comports to choose which to disconnect
 
 - `Write Line`: Brings up an input box at the bottom of the window to write a line to a comport.  If multiple comports are connected, brings up a list of open comports to choose first
+  - Command/Write history is saved.  In the input box, use `Page Up` and `Page Down` to cycle through past entries
 
 - `Write File`: Writes the active file to a comport.  If one or more regions are highlighted on the file, the selected text will be sent instead of the whole file.  If multiple comports are connected, brings up a list of open comports to choose first
 
