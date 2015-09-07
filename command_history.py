@@ -1,4 +1,4 @@
-class History(object):
+class CommandHistory(object):
     def __init__(self):
         self._entries = [""]
         self.index = 0

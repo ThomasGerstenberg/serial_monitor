@@ -9,7 +9,7 @@ sys.path.append(os.path.dirname(__file__))
 sys.path.append(os.path.join(os.path.dirname(__file__), "serial"))
 
 import serial_monitor_thread
-from history import History
+from command_history import CommandHistory
 
 # Check if test mode is enabled
 TEST_MODE = False
@@ -30,7 +30,7 @@ else:
 # List of baud rates to choose from when opening a serial port
 BAUD_RATES = ["9600", "19200", "38400", "57600", "115200"]
 
-entry_history = History()
+entry_history = CommandHistory()
 
 
 class SerialMonitorEventListener(sublime_plugin.EventListener):
@@ -42,13 +42,13 @@ class SerialMonitorEventListener(sublime_plugin.EventListener):
                     text = entry_history.get_next()
                     command = "serial_monitor_update_entry"
                     cmd_args = {"text": text}
-                    return (command, cmd_args)
+                    return command, cmd_args
                 # Page Down was pressed and there are more entries in the history
                 elif cmd_args["forward"] and entry_history.has_previous():
                     text = entry_history.get_previous()
                     command = "serial_monitor_update_entry"
                     cmd_args = {"text": text}
-                    return (command, cmd_args)
+                    return command, cmd_args
 
 
 class CommandArgs(object):
@@ -199,7 +199,7 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         else:
             input_view = sublime.active_window().show_input_panel("Enter Text:", "", partial(_text_entered, command_args),
                                                                   _text_changed, None)
-            input_view.settings().set("serial_input", True)  # Add settings to the view so it can be found by the event listener
+            input_view.settings().set("serial_input", True)  # Add setting to the view so it can be found by the event listener
 
     def write_file(self, command_args):
         """
