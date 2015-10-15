@@ -51,47 +51,56 @@ class SerialMonitor(threading.Thread):
         self.running = False
 
     def _write_text_to_file(self, text):
-        main_thread(self.view.run_command, "serial_monitor_write", {"text": text.replace("\r", "")})
+        if self.view.is_valid():
+            main_thread(self.view.run_command, "serial_monitor_write",
+                        {"text": text.replace("\r", "")})
 
     def _read_serial(self):
         serial_input = self.serial.read(512)
         if serial_input:
             self._write_text_to_file(serial_input.decode(encoding="ascii"))
 
-    def run(self):
-        self.serial.port = self.comport
-        self.serial.open()
-        while self.running and self.view.is_valid():
-            self._read_serial()
-            with self.text_lock:
-                # Write any text in the queue to the serial port
-                while self.text_to_write:
-                    text = self.text_to_write.pop(0)
+    def _write_text(self):
+        with self.text_lock:
+            # Write any text in the queue to the serial port
+            while self.text_to_write:
+                text = self.text_to_write.pop(0)
+                # Commenting out local echo
+                # self._write_text_to_file(text)
+                self.serial.write(bytes(text, encoding="ascii"))
+                self._read_serial()
+
+    def _write_file(self):
+        with self.file_lock:
+            # Write any files in the queue to the serial port
+            while self.file_to_write:
+                output_file = self.file_to_write.pop(0)
+                for region in output_file.regions:
                     # Commenting out local echo
-                    # self._write_text_to_file(text)
-                    self.serial.write(bytes(text, encoding="ascii"))
-                    self._read_serial()
+                    # main_thread(self.view.run_command, "serial_monitor_write", {"view_id": view.id(),
+                    #                                                             "region_begin": region.begin(),
+                    #                                                             "region_end": region.end()})
+                    text = output_file.view.substr(region)
+                    lines = text.splitlines(1)
+                    if not lines[-1].endswith("\n"):
+                        lines[-1] += "\n"
+                    for line in lines:
+                        self.serial.write(bytes(line, encoding="ascii"))
+                        self._read_serial()
 
-            with self.file_lock:
-                # Write any files in the queue to the serial port
-                while self.file_to_write:
-                    output_file = self.file_to_write.pop(0)
-                    for region in output_file.regions:
-                        # Commenting out local echo
-                        # main_thread(self.view.run_command, "serial_monitor_write", {"view_id": view.id(),
-                        #                                                             "region_begin": region.begin(),
-                        #                                                             "region_end": region.end()})
-                        text = output_file.view.substr(region)
-                        lines = text.splitlines(1)
-                        if not lines[-1].endswith("\n"):
-                            lines[-1] += "\n"
-                        for line in lines:
-                            self.serial.write(bytes(line, encoding="ascii"))
-                            self._read_serial()
-
-        # Thread terminated, write to buffer if still valid and close the serial port
-        if self.view.is_valid():
+    def run(self):
+        try:
+            self.serial.port = self.comport
+            self.serial.open()
+            while self.running and self.view.is_valid():
+                self._read_serial()
+                self._write_text()
+                self._write_file()
+        except Exception as e:
+            self._write_text_to_file("\nError occurred on port {0}: {1}".format(self.comport, e.message))
+        finally:
+            # Thread terminated, write to buffer if still valid and close the serial port
             self._write_text_to_file("\nDisconnected from {0}".format(self.comport))
-        self.serial.close()
-        main_thread(self.window.run_command, "serial_monitor", {"serial_command": "_port_closed",
-                                                                "comport": self.comport})
+            self.serial.close()
+            main_thread(self.window.run_command, "serial_monitor", {"serial_command": "_port_closed",
+                                                                    "comport": self.comport})
