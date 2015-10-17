@@ -61,14 +61,17 @@ class SerialMonitor(threading.Thread):
             self._write_text_to_file(serial_input.decode(encoding="ascii"))
 
     def _write_text(self):
+        text_list = []
         with self.text_lock:
+            text_list = self.text_to_write[:]
+            self.text_to_write = []
             # Write any text in the queue to the serial port
-            while self.text_to_write:
-                text = self.text_to_write.pop(0)
-                # Commenting out local echo
-                # self._write_text_to_file(text)
-                self.serial.write(bytes(text, encoding="ascii"))
-                self._read_serial()
+        while text_list:
+            text = text_list.pop(0)
+            # Commenting out local echo
+            # self._write_text_to_file(text)
+            self.serial.write(bytes(text, encoding="ascii"))
+            self._read_serial()
 
     def _write_file(self):
         with self.file_lock:
