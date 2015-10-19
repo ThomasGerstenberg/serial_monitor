@@ -58,7 +58,7 @@ class SerialMonitor(threading.Thread):
     def _read_serial(self):
         serial_input = self.serial.read(512)
         if serial_input:
-            self._write_text_to_file(serial_input.decode(encoding="ascii"))
+            self._write_text_to_file(serial_input.decode(encoding="ascii", errors="replace"))
 
     def _write_text(self):
         text_list = []
@@ -100,7 +100,7 @@ class SerialMonitor(threading.Thread):
                 self._write_text()
                 self._write_file()
         except Exception as e:
-            self._write_text_to_file("\nError occurred on port {0}: {1}".format(self.comport, e.message))
+            self._write_text_to_file("\nError occurred on port {0}: {1}".format(self.comport, str(e)))
         finally:
             # Thread terminated, write to buffer if still valid and close the serial port
             self._write_text_to_file("\nDisconnected from {0}".format(self.comport))
