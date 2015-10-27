@@ -36,6 +36,16 @@ class SerialMonitorWriteCommand(sublime_plugin.TextCommand):
             self.view.window().run_command("serial_monitor_scroll", {"view_id": self.view.id()})
 
 
+class SerialMonitorEraseCommand(sublime_plugin.TextCommand):
+    """
+    Clears the view
+    """
+    def run(self, edit, **args):
+        self.view.set_read_only(False)
+        self.view.erase(edit, sublime.Region(0, self.view.size()))
+        self.view.set_read_only(True)
+
+
 class SerialMonitorScrollCommand(sublime_plugin.WindowCommand):
     """
     Scrolls to the end of a view
