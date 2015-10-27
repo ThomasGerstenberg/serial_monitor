@@ -7,23 +7,31 @@
                 "caption": "Serial Monitor",
                 "children":
                 [
-                    { "caption": "Connect", 
+                    { "caption": "Connect",
                         "command": "serial_monitor", "args": {"serial_command": "connect"}},
+
                     { "caption": "Disconnect",
                         "command": "serial_monitor", "args": {"serial_command": "disconnect"}},
+
                     { "caption": "Write Line",
                         "command": "serial_monitor", "args": {"serial_command": "write_line"}},
-                    { "caption": "Write File", "command": "serial_monitor", 
+
+                    { "caption": "Write File", "command": "serial_monitor",
                         "args": {"serial_command": "write_file", "override_selection": true}},
-                    { "caption": "Write Selection(s)", "command": "serial_monitor", 
-                        "args": {"serial_command": "write_file"}},
-                    { 
+
+                    { "caption": "Write Selection(s)",
+                        "command": "serial_monitor", "args": {"serial_command": "write_file"}},
+
+                    { "caption": "Clear Buffer",
+                        "command": "serial_monitor", "args": {"serial_command": "clear_buffer"}},
+
+                    {
                         "caption": "Layout",
                         "children":
                         [
-                            { "caption": "Left/Right", 
+                            { "caption": "Left/Right",
                                 "command": "serial_monitor_layout", "args": {"layout": "Left-Right"}},
-                            { "caption": "Over/Under", 
+                            { "caption": "Over/Under",
                                 "command": "serial_monitor_layout", "args": {"layout": "Over-Under"}},
                         ]
                     }
