@@ -1,6 +1,7 @@
 import sublime
 import functools
 import threading
+import time
 
 def main_thread(callback, *args, **kwargs):
     """
@@ -33,6 +34,7 @@ class SerialMonitor(threading.Thread):
         self.window = window
         self.lock = threading.Lock()
         self.running = True
+        self.timestamp_logging = False
         self.text_to_write = []
         self.file_to_write = []
         self.text_lock = threading.Lock()
@@ -50,10 +52,29 @@ class SerialMonitor(threading.Thread):
     def disconnect(self):
         self.running = False
 
+    def enable_timestamps(self, enabled):
+        self.timestamp_logging = enabled;
+
     def _write_text_to_file(self, text):
-        if self.view.is_valid():
-            main_thread(self.view.run_command, "serial_monitor_write",
-                        {"text": text.replace("\r", "")})
+        if not self.view.is_valid():
+            return
+
+        text = text.replace("\r", "")
+
+        # If timestamps are enabled, append a timestamp to the start of each line
+        if self.timestamp_logging:
+            t = time.time()
+            timestamp = time.strftime("[%m-%d-%y %H:%M:%S.", time.localtime(t))
+            timestamp += "%03d] " % (int(t * 1000) % 1000)
+
+            lines = text.splitlines()
+            text = ""
+            # Append the timestamp in front of each line
+            for line in lines:
+                text += timestamp + line + "\n"
+
+        main_thread(self.view.run_command, "serial_monitor_write",
+                    {"text": text})
 
     def _read_serial(self):
         serial_input = self.serial.read(512)

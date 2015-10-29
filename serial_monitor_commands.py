@@ -98,6 +98,7 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
             "write_line": self._select_port_wrapper(self.write_line, self.PortListType.OPEN),
             "write_file": self._select_port_wrapper(self.write_file, self.PortListType.OPEN),
             "clear_buffer": self._select_port_wrapper(self.clear_buffer, self.PortListType.OPEN),
+            "timestamp_logging": self._select_port_wrapper(self.timestamp_logging, self.PortListType.OPEN),
             "_port_closed": self.disconnected
         }
         self.open_ports = {}
@@ -236,6 +237,25 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         output_view = self.open_ports[command_args.comport].view
         output_view.run_command("serial_monitor_erase")
 
+    def timestamp_logging(self, command_args):
+        """
+        Handler for the "timestamp_logging" command.
+        Is wrapped in the _select_port_wrapper to get the comport from the user
+
+        :param command_args: The info of the port to write to
+        :type command_args: CommandArgs
+        """
+        # Choice list is arranged so that disable maps to 0 (False), enable maps to 1 (True)
+        choice_list = ["Disable Timestamp Logging", "Enable Timestamp Logging"]
+        index = -1
+
+        def _logging_selected(p_info, selected_index):
+            if selected_index == -1:  # Cancelled
+                return
+            self.open_ports[p_info.comport].enable_timestamps(selected_index)
+
+        sublime.active_window().show_quick_panel(choice_list, partial(_logging_selected, command_args))
+
     def _select_port_wrapper(self, func, list_type):
         """
         Wrapper function to select the comport based on the user input
@@ -294,7 +314,7 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         window = sublime.active_window()
         last_focused = window.active_view()
 
-        filename = "{0}_{1}.txt".format(command_args.comport, 
+        filename = "{0}_{1}.txt".format(command_args.comport,
                                         time.strftime("%m-%d-%y_%H-%M-%S", time.localtime()))
         if window.num_groups() > 1:
             window.focus_group(1)
