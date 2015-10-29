@@ -1,6 +1,7 @@
 import sys
 import os
 from functools import partial
+import time
 
 import sublime
 import sublime_plugin
@@ -195,7 +196,7 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         if command_args.text:
             _text_entered(command_args.text)
         else:
-            input_view = sublime.active_window().show_input_panel("Enter Text:", "", _text_entered, _text_changed, None)
+            input_view = sublime.active_window().show_input_panel("Enter Text (%s):" % command_args.comport, "", _text_entered, _text_changed, None)
             input_view.settings().set("serial_input", True)  # Add setting to the view so it can be found by the event listener
 
     def write_file(self, command_args):
@@ -304,10 +305,13 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         """
         window = sublime.active_window()
         last_focused = window.active_view()
+
+        filename = "{0}_{1}.txt".format(command_args.comport, 
+                                        time.strftime("%m-%d-%y_%H-%M-%S", time.localtime()))
         if window.num_groups() > 1:
             window.focus_group(1)
         view = window.new_file()
-        view.set_name("{0}_output.txt".format(command_args.comport))
+        view.set_name(filename)
         view.set_read_only(True)
         window.focus_view(last_focused)
 
