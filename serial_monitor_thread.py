@@ -34,7 +34,7 @@ class SerialMonitor(threading.Thread):
         self.window = window
         self.lock = threading.Lock()
         self.running = True
-        self.timestamp_logging = True
+        self.timestamp_logging = False
         self.text_to_write = []
         self.file_to_write = []
         self.text_lock = threading.Lock()
@@ -61,9 +61,10 @@ class SerialMonitor(threading.Thread):
 
         text = text.replace("\r", "")
 
+        # If timestamps are enabled, append a timestamp to the start of each line
         if self.timestamp_logging:
             t = time.time()
-            timestamp = time.strftime("[%y-%m-%d %H:%M:%S.", time.localtime(t))
+            timestamp = time.strftime("[%m-%d-%y %H:%M:%S.", time.localtime(t))
             timestamp += "%03d] " % (int(t * 1000) % 1000)
 
             lines = text.splitlines()

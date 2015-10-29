@@ -238,6 +238,14 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         output_view.run_command("serial_monitor_erase")
 
     def timestamp_logging(self, command_args):
+        """
+        Handler for the "timestamp_logging" command.
+        Is wrapped in the _select_port_wrapper to get the comport from the user
+
+        :param command_args: The info of the port to write to
+        :type command_args: CommandArgs
+        """
+        # Choice list is arranged so that disable maps to 0 (False), enable maps to 1 (True)
         choice_list = ["Disable Timestamp Logging", "Enable Timestamp Logging"]
         index = -1
 
@@ -306,7 +314,7 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         window = sublime.active_window()
         last_focused = window.active_view()
 
-        filename = "{0}_{1}.txt".format(command_args.comport, 
+        filename = "{0}_{1}.txt".format(command_args.comport,
                                         time.strftime("%m-%d-%y_%H-%M-%S", time.localtime()))
         if window.num_groups() > 1:
             window.focus_group(1)
