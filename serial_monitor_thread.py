@@ -39,6 +39,7 @@ class SerialMonitor(threading.Thread):
         self.file_to_write = []
         self.text_lock = threading.Lock()
         self.file_lock = threading.Lock()
+        self.newline_stripped = False
 
     def write_line(self, text):
         with self.text_lock:
@@ -67,11 +68,19 @@ class SerialMonitor(threading.Thread):
             timestamp = time.strftime("[%m-%d-%y %H:%M:%S.", time.localtime(t))
             timestamp += "%03d] " % (int(t * 1000) % 1000)
 
-            lines = text.splitlines()
-            text = ""
-            # Append the timestamp in front of each line
-            for line in lines:
-                text += timestamp + line + "\n"
+            # Newline was stripped from the end of the last write, needs to be
+            # added to the beginning of this write
+            if self.newline_stripped:
+                text = "\n" + text
+                self.newline_stripped = False
+
+            # Don't add a timestamp to the last newline since it'll be stale
+            # Instead add it to the beginning of the next write
+            if text[-1] == '\n':
+                text = text[:-1]
+                self.newline_stripped = True
+
+            text = text.replace("\n", "\n%s" % timestamp)
 
         main_thread(self.view.run_command, "serial_monitor_write",
                     {"text": text})
