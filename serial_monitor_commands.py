@@ -97,6 +97,7 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
             "write_line": self._select_port_wrapper(self.write_line, self.PortListType.OPEN),
             "write_file": self._select_port_wrapper(self.write_file, self.PortListType.OPEN),
             "clear_buffer": self._select_port_wrapper(self.clear_buffer, self.PortListType.OPEN),
+            "timestamp_logging": self._select_port_wrapper(self.timestamp_logging, self.PortListType.OPEN),
             "_port_closed": self.disconnected
         }
         self.open_ports = {}
@@ -234,6 +235,17 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         """
         output_view = self.open_ports[command_args.comport].view
         output_view.run_command("serial_monitor_erase")
+
+    def timestamp_logging(self, command_args):
+        choice_list = ["Disable Timestamp Logging", "Enable Timestamp Logging"]
+        index = -1
+
+        def _logging_selected(p_info, selected_index):
+            if selected_index == -1:  # Cancelled
+                return
+            self.open_ports[p_info.comport].enable_timestamps(selected_index)
+
+        sublime.active_window().show_quick_panel(choice_list, partial(_logging_selected, command_args))
 
     def _select_port_wrapper(self, func, list_type):
         """
