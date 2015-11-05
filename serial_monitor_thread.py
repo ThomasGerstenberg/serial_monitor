@@ -39,6 +39,7 @@ class SerialMonitor(threading.Thread):
         self.file_to_write = []
         self.text_lock = threading.Lock()
         self.file_lock = threading.Lock()
+        self.view_lock = threading.Lock()
         self.newline_stripped = False
 
     def write_line(self, text):
@@ -55,6 +56,10 @@ class SerialMonitor(threading.Thread):
 
     def enable_timestamps(self, enabled):
         self.timestamp_logging = enabled;
+
+    def set_output_view(self, view):
+        with self.view_lock:
+            self.view = view
 
     def _write_text_to_file(self, text):
         if not self.view.is_valid():
@@ -82,8 +87,8 @@ class SerialMonitor(threading.Thread):
 
             text = text.replace("\n", "\n%s" % timestamp)
 
-        main_thread(self.view.run_command, "serial_monitor_write",
-                    {"text": text})
+        with self.view_lock:
+            main_thread(self.view.run_command, "serial_monitor_write", {"text": text})
 
     def _read_serial(self):
         serial_input = self.serial.read(512)
@@ -109,10 +114,6 @@ class SerialMonitor(threading.Thread):
             while self.file_to_write:
                 output_file = self.file_to_write.pop(0)
                 for region in output_file.regions:
-                    # Commenting out local echo
-                    # main_thread(self.view.run_command, "serial_monitor_write", {"view_id": view.id(),
-                    #                                                             "region_begin": region.begin(),
-                    #                                                             "region_end": region.end()})
                     text = output_file.view.substr(region)
                     lines = text.splitlines(1)
                     if not lines[-1].endswith("\n"):

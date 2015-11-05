@@ -17,6 +17,9 @@
     {"caption": "Serial Monitor: Write Line", "command": "serial_monitor",
         "args": {"serial_command": "write_line"}},
 
+    {"caption": "Serial Monitor: New Buffer", "command": "serial_monitor",
+        "args": {"serial_command": "new_buffer"}},
+
     {"caption": "Serial Monitor: Clear Buffer", "command": "serial_monitor",
         "args": {"serial_command": "clear_buffer"}},
 

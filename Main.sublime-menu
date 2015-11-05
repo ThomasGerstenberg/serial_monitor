@@ -25,6 +25,9 @@
                     { "caption": "Write Selection(s)",
                         "command": "serial_monitor", "args": {"serial_command": "write_file"}},
 
+                    { "caption": "New Buffer",
+                        "command": "serial_monitor", "args": {"serial_command": "new_buffer"}},
+
                     { "caption": "Clear Buffer",
                         "command": "serial_monitor", "args": {"serial_command": "clear_buffer"}},
 
