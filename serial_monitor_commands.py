@@ -97,6 +97,7 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
             "disconnect": self._select_port_wrapper(self.disconnect, self.PortListType.OPEN),
             "write_line": self._select_port_wrapper(self.write_line, self.PortListType.OPEN),
             "write_file": self._select_port_wrapper(self.write_file, self.PortListType.OPEN),
+            "new_buffer": self._select_port_wrapper(self.new_buffer, self.PortListType.OPEN),
             "clear_buffer": self._select_port_wrapper(self.clear_buffer, self.PortListType.OPEN),
             "timestamp_logging": self._select_port_wrapper(self.timestamp_logging, self.PortListType.OPEN),
             "_port_closed": self.disconnected
@@ -228,7 +229,7 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
 
     def clear_buffer(self, command_args):
         """
-        Handler for the "clear_buffer" command.
+        Handler for the "clear_buffer" command.  Clears the current output for the serial port
         Is wrapped in the _select_port_wrapper to get the comport from the user
 
         :param command_args: The info of the port to write to
@@ -236,6 +237,18 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         """
         output_view = self.open_ports[command_args.comport].view
         output_view.run_command("serial_monitor_erase")
+
+    def new_buffer(self, command_args):
+        """
+        Handler for the "new_buffer" command.  Creates a new output buffer for the serial port
+        Is wrapped in the _select_port_wrapper to get the comport from the user
+
+        :param command_args: The info of the port to write to
+        :type command_args: CommandArgs
+        """
+        window = sublime.active_window()
+        view = self._create_new_view(window, command_args.comport)
+        self.open_ports[command_args.comport].set_output_view(view)
 
     def timestamp_logging(self, command_args):
         """
@@ -273,7 +286,7 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
                 port_list = open_port_names
 
             if not port_list:
-                sublime.message_dialog("No ports available")
+                sublime.message_dialog("No serial ports %s" % "open" if list_type == self.PortListType.OPEN else "available")
                 return
 
             command_args.callback = func
@@ -305,23 +318,37 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
                                                      selected_index=index)
         return wrapper
 
+    def _create_new_view(self, window, comport):
+        """
+        Creates a new view for the serial output buffer
+
+        :param window: The parent window for the view
+        :param comport: The name of the comport the view is for
+
+        :return: The newly created view
+        """
+        last_focused = window.active_view()
+
+        filename = "{0}_{1}.txt".format(comport, time.strftime("%m-%d-%y_%H-%M-%S", time.localtime()))
+        if window.num_groups() > 1:
+            window.focus_group(1)
+
+        view = window.new_file()
+        view.set_name(filename)
+        view.set_read_only(True)
+        window.focus_view(last_focused)
+
+        return view
+
     def _create_port(self, command_args):
         """
         Creates and starts a SerialMonitorThread with the port info given
 
         :param command_args: The port info in order to open the serial port
         """
-        window = sublime.active_window()
-        last_focused = window.active_view()
 
-        filename = "{0}_{1}.txt".format(command_args.comport,
-                                        time.strftime("%m-%d-%y_%H-%M-%S", time.localtime()))
-        if window.num_groups() > 1:
-            window.focus_group(1)
-        view = window.new_file()
-        view.set_name(filename)
-        view.set_read_only(True)
-        window.focus_view(last_focused)
+        window = sublime.active_window()
+        view = self._create_new_view(window, command_args.comport)
 
         # Create the serial port without specifying the comport so it does not automatically open
         serial_port = serial.Serial(None, command_args.baud, timeout=0.1)
