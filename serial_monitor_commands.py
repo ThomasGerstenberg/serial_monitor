@@ -90,6 +90,7 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         super(SerialMonitorCommand, self).__init__()
         self.settings = None
         self.settings_name = "serial_monitor.sublime-settings"
+        self.syntax_file = "Packages/serial_monitor/syntax/serial_monitor.tmLanguage"
 
         # Map for the run command args and the functions to handle the command
         self.arg_map = {
@@ -336,6 +337,7 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         view = window.new_file()
         view.set_name(filename)
         view.set_read_only(True)
+        view.set_syntax_file(self.syntax_file)
         window.focus_view(last_focused)
 
         return view
@@ -351,7 +353,7 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         view = self._create_new_view(window, command_args.comport)
 
         # Create the serial port without specifying the comport so it does not automatically open
-        serial_port = serial.Serial(None, command_args.baud, timeout=0.1)
+        serial_port = serial.Serial(None, command_args.baud, timeout=0.05)
         sm_thread = serial_monitor_thread.SerialMonitor(command_args.comport, serial_port, view, window)
         self.open_ports[command_args.comport] = sm_thread
         sm_thread.start()
