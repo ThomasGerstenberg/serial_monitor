@@ -36,12 +36,14 @@ Currently supported `serial_command` values and optional args for each:
 - `"connect"`:
  - `"comport": str` - The comport to connect to
  - `"baud": int` - The baud rate to connect with
+ - `"enable_timestamps": bool` - Enable or disable timestamped logging upon connection
 
 - `"disconnect"`:
  - `"comport": str` - The comport to disconnect from
 
 - `timestamp_logging`:
  - `"comport": str` - The comport to enable/disable timestamp logging on
+ - `"enable_timestamps": bool` - True to enable, False to Disable
 
 - `new_buffer`:
  - `"comport": str` - The comport to create a new buffer for
