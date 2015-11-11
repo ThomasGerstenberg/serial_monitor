@@ -1,0 +1,12 @@
+# [PackageDev] target_format: plist, ext: tmLanguage
+---
+name: Serial Monitor Output
+scopeName: source.serial_monitor
+fileTypes: []
+uuid: 14525d9d-0fa1-455b-a9c2-547dbdd42150
+
+patterns:
+- name: comment.serial_monitor
+  match: ^\[(\d\d-){2}\d\d (\d\d:){2}\d\d\.\d{3}\]
+  comment: Matches the Timestamp
+...
