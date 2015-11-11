@@ -1,4 +1,9 @@
 {
     "comport": "COM1",
-    "baud": 9600
+    "baud": 9600,
+    "enable_timestamps": false,
+
+    "number_of_bits": 8,
+    "stop_bits": 1,
+    "parity": "none"
 }
