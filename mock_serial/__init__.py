@@ -22,7 +22,7 @@ class Serial(SerialBase):
     def read(self, size):
         time.sleep(.2)
         self.i += 1
-        text = "{0},\n".format(self.i)
+        text = "{0},\r\n".format(self.i)
         if self.echo:
             retval = self.echo
         else:

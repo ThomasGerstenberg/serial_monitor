@@ -1,4 +1,16 @@
 {
-    "comport": "COM1",
-    "baud": 9600
+    /**
+     * Default Settings that can be overridden by the user in the user settings.
+     * These are the settings used when opening a comport without specifying these specific
+     *  modifiers in the command (advanced mode)
+     */
+    
+    /** Boolean to enable/disable timestamp logging when opening a comport */
+    "enable_timestamps": false,
+
+    /** Set the default line endings type.  Valid values are "CR", "LF", or "CRLF" */
+    "line_endings": "CRLF",
+
+    /** Unimplemented */
+    "local_echo": false,
 }

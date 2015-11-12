@@ -35,6 +35,7 @@ class SerialMonitor(threading.Thread):
         self.lock = threading.Lock()
         self.running = True
         self.timestamp_logging = False
+        self.line_endings = "CRLF"
         self.text_to_write = []
         self.file_to_write = []
         self.text_lock = threading.Lock()
@@ -55,17 +56,26 @@ class SerialMonitor(threading.Thread):
         self.running = False
 
     def enable_timestamps(self, enabled):
-        self.timestamp_logging = enabled;
+        self.timestamp_logging = enabled
 
     def set_output_view(self, view):
         with self.view_lock:
             self.view = view
 
+    def set_line_endings(self, line_endings):
+        if line_endings.upper() in ["CR", "LF", "CRLF"]:
+            self.line_endings = line_endings.upper()
+        else:
+            print("Unknown line ending: %s" % line_endings)
+
     def _write_text_to_file(self, text):
         if not self.view.is_valid():
             return
 
-        text = text.replace("\r", "")
+        if self.line_endings == "CR":
+            text = text.replace("\r", "\n")
+        elif self.line_endings == "CRLF":
+            text = text.replace("\r", "")
 
         # If timestamps are enabled, append a timestamp to the start of each line
         if self.timestamp_logging:

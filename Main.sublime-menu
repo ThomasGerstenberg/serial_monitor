@@ -13,9 +13,6 @@
                     { "caption": "Disconnect",
                         "command": "serial_monitor", "args": {"serial_command": "disconnect"}},
 
-                    {"caption": "Timestamp Logging",
-                        "command": "serial_monitor", "args": {"serial_command": "timestamp_logging"}},
-
                     { "caption": "Write Line",
                         "command": "serial_monitor", "args": {"serial_command": "write_line"}},
 
@@ -24,6 +21,12 @@
 
                     { "caption": "Write Selection(s)",
                         "command": "serial_monitor", "args": {"serial_command": "write_file"}},
+
+                    {"caption": "Timestamp Logging",
+                        "command": "serial_monitor", "args": {"serial_command": "timestamp_logging"}},
+
+                    {"caption": "Line Endings",
+                        "command": "serial_monitor", "args": {"serial_command": "line_endings"}},
 
                     { "caption": "New Buffer",
                         "command": "serial_monitor", "args": {"serial_command": "new_buffer"}},
