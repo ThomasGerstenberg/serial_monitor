@@ -339,7 +339,7 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
                 return
 
             index = -1
-            comport = self.default_settings.baud
+            comport = self.default_settings.comport
             if comport in command_args.port_list:
                 index = command_args.port_list.index(comport)
 
