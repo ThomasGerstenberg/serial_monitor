@@ -36,21 +36,22 @@ class SerialMonitor(threading.Thread):
         self.running = True
         self.timestamp_logging = False
         self.line_endings = "CRLF"
-        self.text_to_write = []
-        self.file_to_write = []
-        self.text_lock = threading.Lock()
-        self.file_lock = threading.Lock()
-        self.view_lock = threading.Lock()
-        self.newline_stripped = False
+        self.local_echo = False
+        self._text_to_write = []
+        self._file_to_write = []
+        self._text_lock = threading.Lock()
+        self._file_lock = threading.Lock()
+        self._view_lock = threading.Lock()
+        self._newline = True
 
     def write_line(self, text):
-        with self.text_lock:
-            self.text_to_write.append(text)
+        with self._text_lock:
+            self._text_to_write.append(text)
 
     def write_file(self, view, selection):
         file_args = SerialMonitorWriteFileArgs(view, selection)
-        with self.file_lock:
-            self.file_to_write.append(file_args)
+        with self._file_lock:
+            self._file_to_write.append(file_args)
 
     def disconnect(self):
         self.running = False
@@ -59,14 +60,19 @@ class SerialMonitor(threading.Thread):
         self.timestamp_logging = enabled
 
     def set_output_view(self, view):
-        with self.view_lock:
+        with self._view_lock:
             self.view = view
 
     def set_line_endings(self, line_endings):
         if line_endings.upper() in ["CR", "LF", "CRLF"]:
             self.line_endings = line_endings.upper()
-        else:
-            print("Unknown line ending: %s" % line_endings)
+            return True
+
+        print("Unknown line ending: %s" % line_endings)
+        return False
+
+    def set_local_echo(self, enabled):
+        self.local_echo = enabled
 
     def _write_text_to_file(self, text):
         if not self.view.is_valid():
@@ -85,19 +91,21 @@ class SerialMonitor(threading.Thread):
 
             # Newline was stripped from the end of the last write, needs to be
             # added to the beginning of this write
-            if self.newline_stripped:
-                text = "\n" + text
-                self.newline_stripped = False
+            if self._newline:
+                text = timestamp + text
+                self._newline = False
 
-            # Don't add a timestamp to the last newline since it'll be stale
-            # Instead add it to the beginning of the next write
+            # Count the number of newlines in the text to add a timestamp to
+            # if the text ends with a newline, do not add a timestamp to the next
+            # line and instead add it with the next text received
+            newlines = text.count("\n")
             if text[-1] == '\n':
-                text = text[:-1]
-                self.newline_stripped = True
+                newlines -= 1
+                self._newline = True
 
-            text = text.replace("\n", "\n%s" % timestamp)
+            text = text.replace("\n", "\n%s" % timestamp, newlines)
 
-        with self.view_lock:
+        with self._view_lock:
             main_thread(self.view.run_command, "serial_monitor_write", {"text": text})
 
     def _read_serial(self):
@@ -107,28 +115,31 @@ class SerialMonitor(threading.Thread):
 
     def _write_text(self):
         text_list = []
-        with self.text_lock:
-            text_list = self.text_to_write[:]
-            self.text_to_write = []
-            # Write any text in the queue to the serial port
+        with self._text_lock:
+            text_list = self._text_to_write[:]
+            self._text_to_write = []
+
+        # Write any text in the queue to the serial port
         while text_list:
             text = text_list.pop(0)
-            # Commenting out local echo
-            # self._write_text_to_file(text)
+            if self.local_echo:
+                self._write_text_to_file(text)
             self.serial.write(bytes(text, encoding="ascii"))
             self._read_serial()
 
     def _write_file(self):
-        with self.file_lock:
+        with self._file_lock:
             # Write any files in the queue to the serial port
-            while self.file_to_write:
-                output_file = self.file_to_write.pop(0)
+            while self._file_to_write:
+                output_file = self._file_to_write.pop(0)
                 for region in output_file.regions:
                     text = output_file.view.substr(region)
                     lines = text.splitlines(1)
                     if not lines[-1].endswith("\n"):
                         lines[-1] += "\n"
                     for line in lines:
+                        if self.local_echo:
+                            self._write_text_to_file(line)
                         self.serial.write(bytes(line, encoding="ascii"))
                         self._read_serial()
 

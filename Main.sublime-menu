@@ -28,6 +28,9 @@
                     {"caption": "Line Endings",
                         "command": "serial_monitor", "args": {"serial_command": "line_endings"}},
 
+                    {"caption": "Local Echo",
+                        "command": "serial_monitor", "args": {"serial_command": "local_echo"}},
+
                     { "caption": "New Buffer",
                         "command": "serial_monitor", "args": {"serial_command": "new_buffer"}},
 

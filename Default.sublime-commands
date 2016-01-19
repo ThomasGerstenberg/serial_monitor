@@ -11,6 +11,9 @@
     {"caption": "Serial Monitor: Line Endings", "command": "serial_monitor",
         "args": {"serial_command": "line_endings"}},
 
+    {"caption": "Serial Monitor: Local Echo", "command": "serial_monitor",
+        "args": {"serial_command": "local_echo"}},
+
     {"caption": "Serial Monitor: Write File", "command": "serial_monitor",
         "args": {"serial_command": "write_file", "override_selection": true}},
 
