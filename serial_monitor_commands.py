@@ -322,7 +322,7 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
                 port_list = open_port_names
 
             if not port_list:
-                sublime.message_dialog("No serial ports %s" % "open" if list_type == self.PortListType.OPEN else "available")
+                sublime.message_dialog("No serial ports {}".format("open" if list_type == self.PortListType.OPEN else "available"))
                 return
 
             command_args.callback = func

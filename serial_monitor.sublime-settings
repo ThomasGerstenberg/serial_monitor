@@ -4,7 +4,7 @@
      * These are the settings used when opening a comport without specifying these specific
      *  modifiers in the command (advanced mode)
      */
-    
+
     /** Boolean to enable/disable timestamp logging when opening a comport */
     "enable_timestamps": false,
 
@@ -13,4 +13,6 @@
 
     /** Unimplemented */
     "local_echo": false,
+
+    "word_wrap": true
 }
