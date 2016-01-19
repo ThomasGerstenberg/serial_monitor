@@ -1,16 +1,59 @@
 {
     /**
-     * Default Settings that can be overridden by the user in the user settings.
+     * These are settings that can be overridden by the user in the user settings.
      * These are the settings used when opening a comport without specifying these specific
-     *  modifiers in the command (advanced mode)
+     * modifiers in the command (advanced mode).
+     *
+     * These settings will be applied to all ports. Port-specific settings can also be defined (see below)
      */
-    
+
+
     /** Boolean to enable/disable timestamp logging when opening a comport */
     "enable_timestamps": false,
 
     /** Set the default line endings type.  Valid values are "CR", "LF", or "CRLF" */
     "line_endings": "CRLF",
 
-    /** Unimplemented */
+    /** Boolean to enable/disable word wrap in the output buffer **/
+    "word_wrap": true,
+
+    /** Boolean to enable/disable local echo (echo to output file any text written to serial) */
     "local_echo": false,
+
+
+    /** Unimplemented: data_bits, parity, stop_bits **/
+
+    /** Data bits per byte. Valid values are 5, 6, 7, 8 **/
+    "data_bits": 8,
+
+    /** Parity.  Valid values are "N" (None), "E" (Even), "O" (Odd), "M" (Mark), "S" (Space) **/
+    "parity": "N",
+
+    /** Number of stop bits.  Valid values are 1, 1.5, 2 **/
+    "stop_bits": 1,
+
+    /** 
+     * The baud rate can be specified, but it will disable the baud selection process when connecting to a port.
+     * Only use if you want a single baud rate for all ports
+     */
+    // "baud": 9600,
+
+    /**
+     * Port-specific settings can be defined here to override the above global settings. The variables are the same,
+     * just wrapped in an object with the name of the port.  Example:
+     *
+     * "COM1": 
+     * {
+     *     "baud": 57600,
+     *     "enable_timestamps": true,
+     *     "local_echo": true
+     * }
+     *
+     * This will default the COM1 port to use 57.6k baud (skip baud selection), disable timestamps, and use local echo.
+     * The word_wrap, data_bits, parity, etc. will be inherited from the globals above
+     */
+    
+
+     // So trailing commas aren't an issue in the file
+    "dummy_var": ""
 }

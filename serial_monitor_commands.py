@@ -11,6 +11,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "serial"))
 
 import serial_monitor_thread
 from command_history import CommandHistory
+from serial_settings import SerialSettings
 
 # Check if test mode is enabled
 TEST_MODE = False
@@ -50,31 +51,6 @@ class SerialMonitorEventListener(sublime_plugin.EventListener):
                     return "serial_monitor_update_entry", {"text": entry_history.get_previous()}
 
 
-class CommandArgs(object):
-    """
-    Class for storing information during serial port selection, creation, deletion, etc.
-    """
-    def __init__(self, callback_function, **args):
-        self.callback = callback_function
-        self.comport = args.get("comport", "")
-        self.baud = args.get("baud", 0)
-        self.text = args.get("text", "")
-        self.override_selection = args.get("override_selection", False)
-        self.enable_timestamps = args.get("enable_timestamps", None)
-        self.line_endings = args.get("line_endings", "")
-
-    @staticmethod
-    def load_from_settings(default_settings, last_settings):
-        c = CommandArgs(None)
-        c.comport = last_settings.get("comport", "COM1")
-        c.baud = last_settings.get("baud", 9600)
-        c.text = ""
-        c.override_selection = False
-        c.enable_timestamps = default_settings.get("enable_timestamps", False)
-        c.line_endings = default_settings.get("line_endings", "CRLF")
-        return c
-
-
 class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
     """
     Main class for running commands using the serial monitor
@@ -93,12 +69,12 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         self.last_used_settings_name = "serial_monitor_last_used.sublime-settings"
         self.syntax_file = "Packages/serial_monitor/syntax/serial_monitor.tmLanguage"
 
-        self.default_settings = CommandArgs(None)
+        self.default_settings = SerialSettings(None)
 
         try:
-            sublime.load_settings(self.last_used_settings_name)
+            self.last_settings = sublime.load_settings(self.last_used_settings_name)
         except:
-            sublime.save_settings(self.last_used_settings_name)
+            self.last_settings = sublime.save_settings(self.last_used_settings_name)
 
         # Map for the run command args and the functions to handle the command
         self.arg_map = {
@@ -110,17 +86,13 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
             "clear_buffer": self._select_port_wrapper(self.clear_buffer, self.PortListType.OPEN),
             "timestamp_logging": self._select_port_wrapper(self.timestamp_logging, self.PortListType.OPEN),
             "line_endings": self._select_port_wrapper(self.line_endings, self.PortListType.OPEN),
+            "local_echo": self._select_port_wrapper(self.local_echo, self.PortListType.OPEN),
             "_port_closed": self.disconnected
         }
         self.open_ports = {}
-        self.available_ports = []
 
     def run(self, serial_command, **args):
-        default_settings = sublime.load_settings(self.default_settings_name)
         self.last_settings = sublime.load_settings(self.last_used_settings_name)
-        self.default_settings = CommandArgs.load_from_settings(default_settings, self.last_settings)
-        # Get a list of the available ports that aren't currently open
-        self.available_ports = [c[0] for c in list_ports.comports() if c[0] not in self.open_ports]
 
         try:
             func = self.arg_map[serial_command]
@@ -129,7 +101,7 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
             return
 
         # Create a CommandArgs object to pass around the args
-        command_args = CommandArgs(func, **args)
+        command_args = SerialSettings(func, **args)
         func(command_args)
         sublime.save_settings(self.last_used_settings_name)
 
@@ -138,35 +110,38 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         Handler for the "connect" command.  Is wrapped in the _select_port_wrapper to get the comport from the user
 
         :param command_args: The info of the port to connect to
-        :type command_args: CommandArgs
+        :type command_args: SerialSettings
         """
+
+        if self.default_settings.baud is not None:
+            command_args.baud = self.default_settings.baud
+
         # If baud is already set, continue to port creation
-        if command_args.baud != 0:
+        if command_args.baud is not None:
             self._create_port(command_args)
             return
 
-        baud = self.default_settings.baud
+        baud = self.last_settings.get("baud", 9600)
         index = -1
         if baud in BAUD_RATES:
             index = BAUD_RATES.index(str(baud))
 
         # Callback function for the baud selection quick panel
-        def _baud_selected(p_info, selected_index):
+        def _baud_selected(selected_index):
             if selected_index == -1:  # Cancelled
                 return
-            p_info.baud = BAUD_RATES[selected_index]
+            command_args.baud = BAUD_RATES[selected_index]
             self.last_settings.set("baud", BAUD_RATES[selected_index])
-            self._create_port(p_info)
+            self._create_port(command_args)
 
-        sublime.active_window().show_quick_panel(BAUD_RATES, partial(_baud_selected, command_args),
-                                                 selected_index=index)
+        sublime.active_window().show_quick_panel(BAUD_RATES, _baud_selected, flags=sublime.KEEP_OPEN_ON_FOCUS_LOST, selected_index=index)
 
     def disconnect(self, command_args):
         """
         Handler for the "disconnect" command.  Is wrapped in the _select_port_wrapper to get the comport from the user
 
         :param command_args: The info of the port to disconnect from
-        :type command_args: CommandArgs
+        :type command_args: SerialSettings
         """
         self.open_ports[command_args.comport].disconnect()
 
@@ -176,7 +151,7 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         to inform that the port has been closed
 
         :param command_args: The info of the port that was disconnected
-        :type command_args: CommandArgs
+        :type command_args: SerialSettings
         """
         sublime.status_message("Disconnected from {0}".format(command_args.comport))
         if command_args.comport in self.open_ports:
@@ -187,7 +162,7 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         Handler for the "write_line" command.  Is wrapped in the _select_port_wrapper to get the comport from the user
 
         :param command_args: The info of the port to write to
-        :type command_args: CommandArgs
+        :type command_args: SerialSettings
         """
 
         # Callback to send the text to the SerialMonitorThread that handles the read/write for the port
@@ -208,15 +183,17 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         if command_args.text:
             _text_entered(command_args.text)
         else:
-            input_view = sublime.active_window().show_input_panel("Enter Text (%s):" % command_args.comport, "", _text_entered, _text_changed, None)
-            input_view.settings().set("serial_input", True)  # Add setting to the view so it can be found by the event listener
+            input_view = sublime.active_window().show_input_panel("Enter Text (%s):" % command_args.comport, "",
+                                                                  _text_entered, _text_changed, None)
+            # Add setting to the view so it can be found by the event listener
+            input_view.settings().set("serial_input", True)
 
     def write_file(self, command_args):
         """
         Handler for the "write_file" command.  Is wrapped in the _select_port_wrapper to get the comport from the user
 
         :param command_args: The info of the port to write to
-        :type command_args: CommandArgs
+        :type command_args: SerialSettings
         """
         view = sublime.active_window().active_view()
         if view in [sm.view for sm in self.open_ports.values()]:
@@ -243,8 +220,8 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         Handler for the "clear_buffer" command.  Clears the current output for the serial port
         Is wrapped in the _select_port_wrapper to get the comport from the user
 
-        :param command_args: The info of the port to write to
-        :type command_args: CommandArgs
+        :param command_args: The info of the port to configure
+        :type command_args: SerialSettings
         """
         output_view = self.open_ports[command_args.comport].view
         output_view.run_command("serial_monitor_erase")
@@ -254,8 +231,8 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         Handler for the "new_buffer" command.  Creates a new output buffer for the serial port
         Is wrapped in the _select_port_wrapper to get the comport from the user
 
-        :param command_args: The info of the port to write to
-        :type command_args: CommandArgs
+        :param command_args: The info of the port to configure
+        :type command_args: SerialSettings
         """
         window = sublime.active_window()
         view = self._create_new_view(window, command_args.comport)
@@ -266,44 +243,58 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         Handler for the "timestamp_logging" command.
         Is wrapped in the _select_port_wrapper to get the comport from the user
 
-        :param command_args: The info of the port to write to
-        :type command_args: CommandArgs
+        :param command_args: The info of the port to configure
+        :type command_args: SerialSettings
         """
         # Choice list is arranged so that disable maps to 0 (False), enable maps to 1 (True)
         choice_list = ["Disable Timestamp Logging", "Enable Timestamp Logging"]
 
-        def _logging_selected(p_info, selected_index):
-            if selected_index == -1:  # Cancelled
-                return
-            self.open_ports[p_info.comport].enable_timestamps(selected_index)
+        def _logging_selected(selected_index):
+            if selected_index != -1:  # Cancelled
+                self.open_ports[command_args.comport].enable_timestamps(selected_index)
 
         if command_args.enable_timestamps is not None:
             self.open_ports[command_args.comport].enable_timestamps(command_args.enable_timestamps)
-            return
-
-        sublime.active_window().show_quick_panel(choice_list, partial(_logging_selected, command_args))
+        else:
+            sublime.active_window().show_quick_panel(choice_list, _logging_selected )
 
     def line_endings(self, command_args):
         """
         Handler for the "line_endings" command.
         Is wrapped in the _select_port_wrapper to get the comport from the user
 
-        :param command_args: The info of the port to write to
-        :type command_args: CommandArgs
+        :param command_args: The info of the port to configure
+        :type command_args: SerialSettings
         """
         choice_list = ["CR", "LF", "CRLF"]
 
-        def _line_endings_selected(p_info, selected_index):
-            if selected_index == -1:
-                return
-            self.open_ports[p_info.comport].set_line_endings(choice_list[selected_index])
+        def _line_endings_selected(selected_index):
+            if selected_index != -1:
+                self.open_ports[command_args.comport].set_line_endings(choice_list[selected_index])
 
-        if command_args.line_endings:
-
+        if command_args.line_endings is not None:
             self.open_ports[command_args.comport].set_line_endings(command_args.line_endings)
-            return
+        else:
+            sublime.active_window().show_quick_panel(choice_list, _line_endings_selected)
 
-        sublime.active_window().show_quick_panel(choice_list, partial(_line_endings_selected, command_args))
+    def local_echo(self, command_args):
+        """
+        Handler for the "local_echo" command.
+        Is wrapped in the _select_port_wrapper to get the comport from the user
+
+        :param command_args: The info of the port to configure
+        :type command_args: SerialSettings
+        """
+        choice_list = ["Disable Local Echo", "Enable Local Echo"]
+
+        def _echo_selected(selected_index):
+            if selected_index != -1:
+                self.open_ports[command_args.comport].set_local_echo(selected_index)
+
+        if command_args.local_echo is not None:
+            self.open_ports[command_args.comport].set_local_echo(command_args.local_echo)
+        else:
+            sublime.active_window().show_quick_panel(choice_list, _echo_selected)
 
     def _select_port_wrapper(self, func, list_type):
         """
@@ -311,18 +302,19 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
 
         :param func: The function to wrap
         :param list_type: The type of list to use for selecting the comport
-        :type list_type: SerialMonitorCommand.PortListType or int
+        :type list_type: SerialMonitorCommand.PortListType
         """
         def wrapper(command_args):
             open_port_names = sorted(self.open_ports)
 
             if list_type == self.PortListType.AVAILABLE:
-                port_list = self.available_ports
+                # Get a list of the available ports that aren't currently open
+                port_list = [c[0] for c in list_ports.comports() if c[0] not in self.open_ports]
             else:
                 port_list = open_port_names
 
             if not port_list:
-                sublime.message_dialog("No serial ports %s" % "open" if list_type == self.PortListType.OPEN else "available")
+                sublime.message_dialog("No serial ports {}".format("open" if list_type == self.PortListType.OPEN else "available"))
                 return
 
             command_args.callback = func
@@ -339,19 +331,22 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
                 return
 
             index = -1
-            comport = self.default_settings.comport
+            comport = self.last_settings.get("comport", "COM1")
             if comport in command_args.port_list:
                 index = command_args.port_list.index(comport)
 
             # Callback function for the port selection quick panel
-            def _port_selected(p_info, selected_index):
+            def _port_selected(selected_index):
                 if selected_index == -1:  # Cancelled
                     return
-                p_info.comport = p_info.port_list[selected_index]
-                self.last_settings.set("comport", p_info.comport)
-                p_info.callback(p_info)
-            sublime.active_window().show_quick_panel(command_args.port_list, partial(_port_selected, command_args),
-                                                     selected_index=index)
+
+                command_args.comport = command_args.port_list[selected_index]
+                self.default_settings = SerialSettings.load_defaults(command_args.comport)
+                self.last_settings.set("comport", command_args.comport)
+                command_args.callback(command_args)
+
+            sublime.active_window().show_quick_panel(command_args.port_list, _port_selected,
+                                                     flags=sublime.KEEP_OPEN_ON_FOCUS_LOST, selected_index=index)
         return wrapper
 
     def _create_new_view(self, window, comport):
@@ -382,25 +377,31 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         Creates and starts a SerialMonitorThread with the port info given
 
         :param command_args: The port info in order to open the serial port
-        :type command_args: CommandArgs
+        :type command_args: SerialSettings
         """
+
+        # Create the serial port without specifying the comport so it does not automatically open
+        serial_port = serial.Serial(None, command_args.baud, timeout=0.05)
 
         window = sublime.active_window()
         view = self._create_new_view(window, command_args.comport)
 
-        # Create the serial port without specifying the comport so it does not automatically open
-        serial_port = serial.Serial(None, command_args.baud, timeout=0.05)
         sm_thread = serial_monitor_thread.SerialMonitor(command_args.comport, serial_port, view, window)
 
-        if command_args.enable_timestamps:
-            sm_thread.enable_timestamps(True)
+        if command_args.enable_timestamps is not None:
+            sm_thread.enable_timestamps(command_args.enable_timestamps)
         else:
             sm_thread.enable_timestamps(self.default_settings.enable_timestamps)
 
-        if command_args.line_endings:
+        if command_args.line_endings is not None:
             sm_thread.set_line_endings(command_args.line_endings)
         else:
             sm_thread.set_line_endings(self.default_settings.line_endings)
+
+        if command_args.local_echo is not None:
+            sm_thread.set_local_echo(command_args.local_echo)
+        else:
+            sm_thread.set_local_echo(self.default_settings.local_echo)
 
         self.open_ports[command_args.comport] = sm_thread
         sm_thread.start()
