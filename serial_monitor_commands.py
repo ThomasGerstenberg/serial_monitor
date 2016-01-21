@@ -376,7 +376,7 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         """
         last_focused = window.active_view()
 
-        filename = "{0}_{1}_{2}.txt".format(comport, suffix, time.strftime("%m-%d-%y_%H-%M-%S", time.localtime()))
+        filename = "{0}_{1}_{2}.txt".format(comport.replace("/dev/", "", 1), suffix, time.strftime("%m-%d-%y_%H-%M-%S", time.localtime()))
         if window.num_groups() > 1:
             window.focus_group(1)
 
