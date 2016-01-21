@@ -2,6 +2,7 @@ import sys
 import os
 from functools import partial
 import time
+import glob
 
 import sublime
 import sublime_plugin
@@ -25,6 +26,8 @@ del settings
 if not TEST_MODE:
     import serial
     from serial.tools import list_ports
+    from serial import SerialException
+    from serial import Serial
 else:
     from mock_serial.tools import list_ports
     import mock_serial as serial
@@ -50,6 +53,34 @@ class SerialMonitorEventListener(sublime_plugin.EventListener):
                 elif cmd_args["forward"] and entry_history.has_previous():
                     return "serial_monitor_update_entry", {"text": entry_history.get_previous()}
 
+# From http://stackoverflow.com/questions/12090503/listing-available-com-ports-with-python
+def serial_ports():
+    """ Lists serial port names
+
+        :raises EnvironmentError:
+            On unsupported or unknown platforms
+        :returns:
+            A list of the serial ports available on the system
+    """
+    if sys.platform.startswith('win'):
+        ports = ['COM%s' % (i + 1) for i in range(256)]
+    elif sys.platform.startswith('linux') or sys.platform.startswith('cygwin'):
+        # this excludes your current terminal "/dev/tty"
+        ports = glob.glob('/dev/tty[A-Za-z]*')
+    elif sys.platform.startswith('darwin'):
+        ports = glob.glob('/dev/tty.*')
+    else:
+        raise EnvironmentError('Unsupported platform')
+
+    result = []
+    for port in ports:
+        try:
+            s = Serial(port)
+            s.close()
+            result.append(port)
+        except (OSError, SerialException):
+            pass
+    return result
 
 class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
     """
@@ -309,7 +340,7 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
 
             if list_type == self.PortListType.AVAILABLE:
                 # Get a list of the available ports that aren't currently open
-                port_list = [c[0] for c in list_ports.comports() if c[0] not in self.open_ports]
+                port_list = [c for c in serial_ports() if c not in self.open_ports]
             else:
                 port_list = open_port_names
 
