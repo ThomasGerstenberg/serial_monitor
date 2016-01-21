@@ -446,8 +446,9 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
 
         def _filter_selected(selected_index):
             if selected_index > 0:
-                filter_view = self._create_new_view(sublime.active_window(), command_args.comport, "filtered")
-                sm_thread.set_filtering(True, filter_files[selected_index - 1], filter_view)
+                filter_file = filter_files[selected_index - 1]
+                filter_view = self._create_new_view(sublime.active_window(), command_args.comport, filter_file.name)
+                sm_thread.set_filtering(True, filter_file, filter_view)
             elif selected_index == 0:
                 sublime.active_window().show_quick_panel(selections, _filter_selected, selected_index=0)
 

@@ -153,7 +153,7 @@ class FilterFile(object):
 if __name__ == '__main__':
     json_file = \
 """
-{.
+{
     "name": "My Filter",
     "filters":
     [
