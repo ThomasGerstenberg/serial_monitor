@@ -27,7 +27,7 @@ def list_ports():
         try:
             s = Serial(port)
             s.close()
-            result.append(port.replace("/dev/", "", 1))
+            result.append(port)
         except (OSError, SerialException):
             pass
     return result
