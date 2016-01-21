@@ -43,6 +43,9 @@ class SerialMonitor(threading.Thread):
         self._file_lock = threading.Lock()
         self._view_lock = threading.Lock()
         self._newline = True
+        self._filtering = False
+        self._filtering_file = None
+        self._filtering_view = None
 
     def write_line(self, text):
         with self._text_lock:
@@ -73,6 +76,17 @@ class SerialMonitor(threading.Thread):
 
     def set_local_echo(self, enabled):
         self.local_echo = enabled
+
+    def set_filtering(self, enabled, filtering_file=None, filtering_view=None):
+        # If already enabled, throw message on old view stating it is stale
+        self._filtering = enabled
+        if filtering_file:
+            self._filtering_file = filtering_file
+        if filtering_view:
+            self._filtering_view = filtering_view
+
+    def filtering(self):
+        return self._filtering
 
     def _write_text_to_file(self, text):
         if not self.view.is_valid():

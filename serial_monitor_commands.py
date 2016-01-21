@@ -11,6 +11,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "serial"))
 import serial_monitor_thread
 from command_history import CommandHistory
 from serial_settings import SerialSettings
+from filter import FilterFile, FilterParsingError, FilterAttributeError, FilterException
 
 # Check if test mode is enabled
 TEST_MODE = False
@@ -87,6 +88,7 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
             "timestamp_logging": self._select_port_wrapper(self.timestamp_logging, self.PortListType.OPEN),
             "line_endings": self._select_port_wrapper(self.line_endings, self.PortListType.OPEN),
             "local_echo": self._select_port_wrapper(self.local_echo, self.PortListType.OPEN),
+            "filter": self._select_port_wrapper(self.filter, self.PortListType.OPEN),
             "_port_closed": self.disconnected
         }
         self.open_ports = {}
@@ -277,6 +279,20 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         else:
             sublime.active_window().show_quick_panel(choice_list, _line_endings_selected)
 
+    def filter(self, command_args):
+        choice_list = ["Disable Filtering", "Change Filtering"]
+
+        def _enable_disable_selected(selected_index):
+            if selected_index == 0:
+                self.open_ports[command_args.comport].set_filtering(False)
+            elif selected_index == 1:
+                self._select_filtering_file(command_args)
+
+        if self.open_ports[command_args.comport].filtering():
+            sublime.active_window().show_quick_panel(choice_list, _enable_disable_selected)
+        else:
+            self._select_filtering_file(command_args)
+
     def local_echo(self, command_args):
         """
         Handler for the "local_echo" command.
@@ -349,7 +365,7 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
                                                      flags=sublime.KEEP_OPEN_ON_FOCUS_LOST, selected_index=index)
         return wrapper
 
-    def _create_new_view(self, window, comport):
+    def _create_new_view(self, window, comport, suffix=""):
         """
         Creates a new view for the serial output buffer
 
@@ -360,7 +376,7 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         """
         last_focused = window.active_view()
 
-        filename = "{0}_{1}.txt".format(comport, time.strftime("%m-%d-%y_%H-%M-%S", time.localtime()))
+        filename = "{0}_{1}_{2}.txt".format(comport, suffix, time.strftime("%m-%d-%y_%H-%M-%S", time.localtime()))
         if window.num_groups() > 1:
             window.focus_group(1)
 
@@ -407,3 +423,35 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         sm_thread.start()
 
         sublime.status_message("Starting serial monitor on {0}".format(command_args.comport))
+
+    def _select_filtering_file(self, command_args):
+        filter_files = []
+        for window in sublime.windows():
+            for view in window.views():
+                if view in [sm.view for sm in self.open_ports.values()]:
+                    continue
+                try:
+                    f = FilterFile.parse_filter_file(view.substr(sublime.Region(0, view.size())), True)
+                    if f:
+                        filter_files.append(f)
+                except FilterException:
+                    pass
+
+        if not filter_files:
+            sublime.message_dialog("Unable to find any valid filters")
+            return
+
+        selections = ["Select filter to use:"] + [f.name for f in filter_files]
+        sm_thread = self.open_ports[command_args.comport]
+
+        def _filter_selected(selected_index):
+            if selected_index > 0:
+                filter_view = self._create_new_view(sublime.active_window(), command_args.comport, "filtered")
+                sm_thread.set_filtering(True, filter_files[selected_index - 1], filter_view)
+            elif selected_index == 0:
+                sublime.active_window().show_quick_panel(selections, _filter_selected, selected_index=0)
+
+        sublime.active_window().show_quick_panel(selections, _filter_selected, selected_index=1)
+
+
+
