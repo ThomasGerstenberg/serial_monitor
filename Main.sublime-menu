@@ -44,7 +44,7 @@
                             { "caption": "Left/Right",
                                 "command": "serial_monitor_layout", "args": {"layout": "Left-Right"}},
                             { "caption": "Over/Under",
-                                "command": "serial_monitor_layout", "args": {"layout": "Over-Under"}},
+                                "command": "serial_monitor_layout", "args": {"layout": "Over-Under"}}
                         ]
                     }
                 ]
