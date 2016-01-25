@@ -65,3 +65,8 @@ class SerialMonitorUpdateEntryCommand(sublime_plugin.TextCommand):
     def run(self, edit, text):
         self.view.erase(edit, sublime.Region(0, self.view.size()))
         self.view.insert(edit, 0, text)
+
+
+class SerialMonitorNewFilterCommand(sublime_plugin.WindowCommand):
+    def run(self):
+        self.window.new_file()

@@ -1,5 +1,6 @@
 import json
 import re
+from .json_utils import clean_json
 
 
 class FilterException(Exception):
@@ -52,10 +53,26 @@ class _FilterEndsWith(_Filter):
         return text.lower().endswith(self.filter_text.lower())
 
 
+class _FilterStartsWith(_Filter):
+    def matches(self, text):
+        if self.case_sensitive:
+            return text.startswith(self.filter_text)
+        return text.lower().startswith(self.filter_text.lower())
+
+class _FilterExact(_Filter):
+    def matches(self, text):
+        if self.case_sensitive:
+            return text == self.filter_text
+        return text.lower() == self.filter_text.lower()
+
+
 class _FilterRegex(_Filter):
     def __init__(self, filter_text, case_sensitive):
         super(_FilterRegex, self).__init__(filter_text, case_sensitive)
-        self.pattern = re.compile(filter_text)
+        flags = None
+        if not case_sensitive:
+            flags = re.IGNORECASE
+        self.pattern = re.compile(filter_text, flags=flags)
 
     def matches(self, text):
         return self.pattern.search(text) is not None
@@ -64,6 +81,8 @@ class _FilterRegex(_Filter):
 filters = {
     "contains": _FilterContains,
     "endswith": _FilterEndsWith,
+    "startswith": _FilterStartsWith,
+    "exact": _FilterExact,
     "regex":    _FilterRegex,
 }
 
@@ -99,7 +118,7 @@ class FilterFile(object):
         :rtype: FilterFile
         """
         try:
-            file = json.loads(file_text)
+            file = json.loads(clean_json(file_text))
         except Exception as ex:
             raise FilterParsingError(ex.args[0])
 
