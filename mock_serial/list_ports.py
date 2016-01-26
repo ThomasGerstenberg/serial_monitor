@@ -1,5 +1,5 @@
 NUM_PORTS = 5
-port_list = ["ttyUSB" + str(i) for i in range(1, NUM_PORTS + 1)]
+port_list = ["/dev/ttyUSB" + str(i) for i in range(1, NUM_PORTS + 1)]
 
 def list_ports():
     """
