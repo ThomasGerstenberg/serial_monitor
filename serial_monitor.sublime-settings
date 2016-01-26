@@ -47,10 +47,12 @@
      *     "baud": 57600,
      *     "enable_timestamps": true,
      *     "local_echo": true
-     * }
+     * },
      *
-     * This will default the COM1 port to use 57.6k baud (skip baud selection), disable timestamps, and use local echo.
+     * This will default the COM1 port to use 57.6k baud (skips baud selection), enable timestamps, and use local echo.
      * The word_wrap, data_bits, parity, etc. will be inherited from the globals above
+     *
+     * Note: Linux/OSX only need the device name (i.e. "ttyS0" instead of "/dev/ttyS0")
      */
     
 

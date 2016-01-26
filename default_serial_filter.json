@@ -16,16 +16,13 @@
         {
             // A filter must contain a 'text' field (the filtering text) and a 'method field'.
             // Valid method values: 'contains', 'exact', 'startswith', 'endswith', 'regex'.  What they do should be self-explanitory
-            "text": "abcdefg",
+            "text": "$1",
             "method": "contains",
 
             // the 'case_sensitive' field is optional, the default value is 'false'
             "case_sensitive": true,
         },
-        {
-            "text": "([0-9a-fA-f]{2}\\s){4}",
-            "method": "regex"
-        },
+        // Add another filter here...
     ]
 }
 

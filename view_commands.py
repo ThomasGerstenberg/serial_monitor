@@ -1,5 +1,8 @@
 import sublime
 import sublime_plugin
+import os
+
+import serial_constants
 
 
 class SerialMonitorWriteCommand(sublime_plugin.TextCommand):
@@ -67,6 +70,41 @@ class SerialMonitorUpdateEntryCommand(sublime_plugin.TextCommand):
         self.view.insert(edit, 0, text)
 
 
-class SerialMonitorNewFilterCommand(sublime_plugin.WindowCommand):
-    def run(self):
-        self.window.new_file()
+class SerialMonitorNewFilterCommand(sublime_plugin.TextCommand):
+    """
+    Creates a new Serial Monitor Filter file with the default filter set to the text provided
+    """
+    def run(self, edit, text="sample filter"):
+        folder = os.path.split(__file__)[0]
+
+        file = os.path.join(folder, "default_serial_filter.json")
+
+        with open(file) as f:
+            template = "".join(f.readlines())
+
+        # Escape slashes and quotes
+        text = text.replace("\\", "\\\\")
+        text = text.replace("\"", "\\\"")
+        template = template.replace("$1", text.strip("\r\n"))
+
+        v = self.view.window().new_file()
+        v.insert(edit, 0, template)
+        v.set_name("new filter")
+        v.assign_syntax("Packages/JavaScript/JSON.tmLanguage")
+
+
+class SerialMonitorNewFilterFromTextCommand(SerialMonitorNewFilterCommand):
+    """
+    Creates a new Serial Monitor Filter file based on the text selected
+    """
+    def run(self, edit, text=""):
+        sel = self.view.substr(self.view.sel()[0])
+        super(SerialMonitorNewFilterFromTextCommand, self).run(edit, sel)
+
+    def is_visible(self):
+        # Only show this command if the file syntax is a Serial Monitor syntax
+        # And exactly 1 region is selected that is not multi-line
+        if self.view.settings().get("syntax") == serial_constants.SYNTAX_FILE:
+            sel = self.view.sel()
+            if len(sel) == 1 and not sel[0].empty():
+                return len(self.view.substr(sel[0]).splitlines()) == 1

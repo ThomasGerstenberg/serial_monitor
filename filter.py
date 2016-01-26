@@ -1,6 +1,6 @@
 import json
 import re
-from .json_utils import clean_json
+from json_utils import clean_json
 
 
 class FilterException(Exception):

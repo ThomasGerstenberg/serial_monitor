@@ -25,6 +25,9 @@
                     {"caption": "Timestamp Logging",
                         "command": "serial_monitor", "args": {"serial_command": "timestamp_logging"}},
 
+                    {"caption": "Filtering", 
+                        "command": "serial_monitor", "args": {"serial_command": "filter"}},
+
                     {"caption": "Line Endings",
                         "command": "serial_monitor", "args": {"serial_command": "line_endings"}},
 
@@ -36,6 +39,9 @@
 
                     { "caption": "Clear Buffer",
                         "command": "serial_monitor", "args": {"serial_command": "clear_buffer"}},
+
+                    { "caption": "New Filter",
+                        "command": "serial_monitor_new_filter"},
 
                     {
                         "caption": "Layout",

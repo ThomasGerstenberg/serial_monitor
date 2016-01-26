@@ -29,6 +29,8 @@ else:
     import mock_serial as serial
     from mock_serial.list_ports import list_ports
 
+import serial_constants
+
 # List of baud rates to choose from when opening a serial port
 BAUD_RATES = ["9600", "19200", "38400", "57600", "115200"]
 
@@ -66,16 +68,14 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
 
     def __init__(self):
         super(SerialMonitorCommand, self).__init__()
-        self.default_settings_name = "serial_monitor.sublime-settings"
-        self.last_used_settings_name = "serial_monitor_last_used.sublime-settings"
         self.syntax_file = "Packages/serial_monitor/syntax/serial_monitor.tmLanguage"
 
         self.default_settings = SerialSettings(None)
 
         try:
-            self.last_settings = sublime.load_settings(self.last_used_settings_name)
+            self.last_settings = sublime.load_settings(serial_constants.LAST_USED_SETTINGS)
         except:
-            self.last_settings = sublime.save_settings(self.last_used_settings_name)
+            self.last_settings = sublime.save_settings(serial_constants.LAST_USED_SETTINGS)
 
         # Map for the run command args and the functions to handle the command
         self.arg_map = {
@@ -94,7 +94,7 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         self.open_ports = {}
 
     def run(self, serial_command, **args):
-        self.last_settings = sublime.load_settings(self.last_used_settings_name)
+        self.last_settings = sublime.load_settings(serial_constants.LAST_USED_SETTINGS)
 
         try:
             func = self.arg_map[serial_command]
@@ -105,7 +105,7 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         # Create a CommandArgs object to pass around the args
         command_args = SerialSettings(func, **args)
         func(command_args)
-        sublime.save_settings(self.last_used_settings_name)
+        sublime.save_settings(serial_constants.LAST_USED_SETTINGS)
 
     def connect(self, command_args):
         """
@@ -383,7 +383,7 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         view = window.new_file()
         view.set_name(filename)
         view.set_read_only(True)
-        view.set_syntax_file(self.syntax_file)
+        view.set_syntax_file(serial_constants.SYNTAX_FILE)
         window.focus_view(last_focused)
 
         return view
