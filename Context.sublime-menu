@@ -1,0 +1,4 @@
+[
+	{ "caption": "-" },
+	{ "caption": "New Serial Filter from text...", "command": "serial_monitor_new_filter_from_text" }
+]

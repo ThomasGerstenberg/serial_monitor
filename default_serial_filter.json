@@ -1,0 +1,28 @@
+{
+    /**
+     * Serial filter files contain one or more text/regex strings to filter input and output.
+     * The filtering is 'or' based, meaning only onf of the filters need to be satisfied for the text to be filtered through.
+     * Multiline and // single line comments are valid, however inline comments are NOT valid
+     */
+    
+    // Filters should be uniquely named.  This is how the filters are identified in the drop-down list when applying a filter to a serial port.
+    // This file doesn't even need to be saved, just open in a sublime tab for the serial monitor to find it
+    "name": "My Filter",
+
+    // One or more filters to filter text through.  This array should be interpreted as "only show me text which satisfies one of these filters"
+    // The text is parsed on a line-by-line basis; multiline filters will not work
+    "filters":
+    [
+        {
+            // A filter must contain a 'text' field (the filtering text) and a 'method field'.
+            // Valid method values: 'contains', 'exact', 'startswith', 'endswith', 'regex'.  What they do should be self-explanitory
+            "text": "$1",
+            "method": "contains",
+
+            // the 'case_sensitive' field is optional, the default value is 'false'
+            "case_sensitive": true,
+        },
+        // Add another filter here...
+    ]
+}
+

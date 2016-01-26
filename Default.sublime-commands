@@ -29,5 +29,10 @@
     {"caption": "Serial Monitor: Clear Buffer", "command": "serial_monitor",
         "args": {"serial_command": "clear_buffer"}},
 
+    {"caption": "Serial Monitor: Filtering", "command": "serial_monitor",
+        "args": {"serial_command": "filter"}},
+
+    {"caption": "Serial Monitor: New Filter", "command": "serial_monitor_new_filter"},
+
     {"caption": "Serial Monitor: Layout", "command": "serial_monitor_layout"}
 ]
