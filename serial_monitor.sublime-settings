@@ -32,7 +32,7 @@
     /** Number of stop bits.  Valid values are 1, 1.5, 2 **/
     "stop_bits": 1,
 
-    /** 
+    /**
      * The baud rate can be specified, but it will disable the baud selection process when connecting to a port.
      * Only use if you want a single baud rate for all ports
      */
@@ -42,7 +42,7 @@
      * Port-specific settings can be defined here to override the above global settings. The variables are the same,
      * just wrapped in an object with the name of the port.  Example:
      *
-     * "COM1": 
+     * "COM1":
      * {
      *     "baud": 57600,
      *     "enable_timestamps": true,
@@ -52,9 +52,9 @@
      * This will default the COM1 port to use 57.6k baud (skips baud selection), enable timestamps, and use local echo.
      * The word_wrap, data_bits, parity, etc. will be inherited from the globals above
      *
-     * Note: Linux/OSX only need the device name (i.e. "ttyS0" instead of "/dev/ttyS0")
+     * Note: Linux/OSX users need to specify the whole device path (i.e. "/dev/ttyS0" instead of "ttyS0")
      */
-    
+
 
      // So trailing commas aren't an issue in the file
     "dummy_var": ""
