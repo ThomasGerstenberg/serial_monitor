@@ -100,6 +100,10 @@ class SerialMonitor(threading.Thread):
             return
 
         lines = text.splitlines(True)
+
+        if len(lines) == 0:
+            return
+
         # Append the last incomplete line to the beginning of this text
         lines[0] = self._incomplete_line + lines[0]
         self._incomplete_line = ""
@@ -114,7 +118,7 @@ class SerialMonitor(threading.Thread):
                     main_thread(self._filtering_view.run_command, "serial_monitor_write", {"text": timestamp + line})
 
     def _write_text_to_file(self, text):
-        if not self.view.is_valid():
+        if not self.view.is_valid() or not text:
             return
 
         if self.line_endings == "CR":
