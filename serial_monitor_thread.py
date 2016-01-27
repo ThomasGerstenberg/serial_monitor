@@ -189,7 +189,8 @@ class SerialMonitor(threading.Thread):
             t = time.time()
             timestamp = time.strftime("[%m-%d-%y %H:%M:%S.", time.localtime(t)) + "%03d] " % (int(t * 1000) % 1000)
 
-        self._filter_manager.apply_filters(text, timestamp)
+        filter_thread = threading.Thread(target=self._filter_manager.apply_filters, args=(text, timestamp))
+        filter_thread.start()
 
         # If timestamps are enabled, append a timestamp to the start of each line
         if self.timestamp_logging:
