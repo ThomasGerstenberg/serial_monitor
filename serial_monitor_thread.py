@@ -16,10 +16,101 @@ def main_thread(callback, *args, **kwargs):
     # most sublime.[something] calls need to be on the main thread
     sublime.set_timeout(functools.partial(callback, *args, **kwargs), 0)
 
-class SerialMonitorWriteFileArgs(object):
+class _WriteFileArgs(object):
     def __init__(self, view, regions):
         self.view = view
         self.regions = regions
+
+
+class _FilterArgs(object):
+    def __init__(self, filter_file, view):
+        """
+        :type filter_file: serial_filter.FilterFile
+        :type view: sublime.View
+        """
+        self.filter_file = filter_file
+        self.view = view
+
+    def apply(self, text, timestamp=""):
+        if self.filter_file.check_filters(text):
+            self.write(text, timestamp)
+
+    def write(self, text, timestamp=""):
+        main_thread(self.view.run_command, "serial_monitor_write", {"text": timestamp + text})
+
+
+class _FilterManager(object):
+    def __init__(self):
+        super(_FilterManager, self).__init__()
+        self._filters = []
+        self.filter_lock = threading.Lock()
+        self._incomplete_line = ""
+
+    def add_filter(self, new_filter, output_view):
+        """
+        :type new_filter: serial_filter.FilterFile
+        """
+        filter_args = _FilterArgs(new_filter, output_view)
+        with self.filter_lock:
+            self._filters.append(filter_args)
+
+    def remove_filter(self, filter_to_remove):
+        """
+        :type filter_to_remove: serial_filter.FilterFile
+        """
+        filter_files = [f.filter_file for f in self._filters]
+        if filter_to_remove in filter_files:
+            with self.filter_lock:
+                i = filter_files.index(filter_to_remove)
+                filter_args = self._filters[i]
+                filter_args.write("Filtering Disabled")
+                self._filters.remove(filter_args)
+
+    def port_closed(self, port_name):
+        with self.filter_lock:
+            for f in self._filters:
+                f.write("Disconnected from {}".format(port_name))
+
+    def filters(self):
+        return [f.filter_file for f in self._filters]
+
+    def apply_filters(self, text, timestamp=""):
+        if len(self._filters) == 0:
+            return
+        lines = self._split_text(text)
+        if len(lines) == 0:
+            return
+
+        filters_to_remove = []
+        # Loop through all lines and all filters for matches
+        for line in lines:
+            with self.filter_lock:
+                for f in self._filters:
+                    if not f.view or not f.view.is_valid() or not f.filter_file:
+                        continue
+                    if not f.view.is_valid():
+                        filters_to_remove.append(f)
+                        continue
+                    f.apply(line, timestamp)
+
+        # If any filters have invalid views, remove from the list
+        with self.filter_lock:
+            for f in filters_to_remove:
+                self._filters.remove(f)
+
+    def _split_text(self, text):
+        lines = text.splitlines(True)
+        if len(lines) == 0:
+            return lines
+
+        # Append the last incomplete line to the beginning of this text
+        lines[0] = self._incomplete_line + lines[0]
+        self._incomplete_line = ""
+
+        # Check if the last line is complete.  If not, pop it from the end of the list and save it as an incomplete line
+        if not lines[-1].endswith("\n"):
+            self._incomplete_line = lines.pop()
+        return lines
 
 
 class SerialMonitor(threading.Thread):
@@ -42,19 +133,15 @@ class SerialMonitor(threading.Thread):
         self._text_lock = threading.Lock()
         self._file_lock = threading.Lock()
         self._view_lock = threading.Lock()
-        self._filter_view_lock = threading.Lock()
+        self._filter_manager = _FilterManager()
         self._newline = True
-        self._filtering = False
-        self._filtering_file = None
-        self._filtering_view = None
-        self._incomplete_line = ""
 
     def write_line(self, text):
         with self._text_lock:
             self._text_to_write.append(text)
 
     def write_file(self, view, selection):
-        file_args = SerialMonitorWriteFileArgs(view, selection)
+        file_args = _WriteFileArgs(view, selection)
         with self._file_lock:
             self._file_to_write.append(file_args)
 
@@ -79,43 +166,14 @@ class SerialMonitor(threading.Thread):
     def set_local_echo(self, enabled):
         self.local_echo = enabled
 
-    def set_filtering(self, enabled, filtering_file=None, filtering_view=None):
-        # If already enabled, throw message on old view stating it is stale
-        with self._filter_view_lock:
-            if filtering_file:
-                self._filtering_file = filtering_file
-            if filtering_view:
-                self._filtering_view = filtering_view
-            self._filtering = enabled
+    def add_filter(self, filtering_file, output_view):
+        self._filter_manager.add_filter(filtering_file, output_view)
 
-    def filtering(self):
-        return self._filtering
+    def remove_filter(self, filtering_file):
+        self._filter_manager.remove_filter(filtering_file)
 
-    def _write_to_filtering_file(self, text, timestamp):
-        if not self._filtering or not self._filtering_view or not self._filtering_file:
-            self._filtering = False
-            return
-        if not self._filtering_view.is_valid():
-            self._filtering = False
-            return
-
-        lines = text.splitlines(True)
-
-        if len(lines) == 0:
-            return
-
-        # Append the last incomplete line to the beginning of this text
-        lines[0] = self._incomplete_line + lines[0]
-        self._incomplete_line = ""
-
-        # Check if the last line is complete.  If not, pop it from the end of the list and save it as an incomplete line
-        if not lines[-1].endswith("\n"):
-            self._incomplete_line = lines.pop()
-
-        for line in lines:
-            if self._filtering_file.check_filters(line):
-                with self._filter_view_lock:
-                    main_thread(self._filtering_view.run_command, "serial_monitor_write", {"text": timestamp + line})
+    def filters(self):
+        return self._filter_manager.filters()
 
     def _write_text_to_file(self, text):
         if not self.view.is_valid() or not text:
@@ -131,7 +189,7 @@ class SerialMonitor(threading.Thread):
             t = time.time()
             timestamp = time.strftime("[%m-%d-%y %H:%M:%S.", time.localtime(t)) + "%03d] " % (int(t * 1000) % 1000)
 
-        self._write_to_filtering_file(text, timestamp)
+        self._filter_manager.apply_filters(text, timestamp)
 
         # If timestamps are enabled, append a timestamp to the start of each line
         if self.timestamp_logging:
@@ -202,6 +260,7 @@ class SerialMonitor(threading.Thread):
         finally:
             # Thread terminated, write to buffer if still valid and close the serial port
             self._write_text_to_file("\nDisconnected from {0}".format(self.comport))
+            self._filter_manager.port_closed(self.comport)
             self.serial.close()
             main_thread(self.window.run_command, "serial_monitor", {"serial_command": "_port_closed",
                                                                     "comport": self.comport})
