@@ -441,7 +441,9 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
                 for view in window.views():
                     if view in sm_views:
                         continue
-                    if view.settings().get("syntax") != "Packages/JavaScript/JSON.tmLanguage":
+
+                    syntax = view.settings().get("syntax")
+                    if "json" not in syntax.lower():
                         continue
 
                     try:
