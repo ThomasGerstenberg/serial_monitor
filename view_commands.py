@@ -90,7 +90,7 @@ class SerialMonitorNewFilterCommand(sublime_plugin.TextCommand):
         v = self.view.window().new_file()
         v.insert(edit, 0, template)
         v.set_name("new filter")
-        v.assign_syntax("Packages/JavaScript/JSON.tmLanguage")
+        v.assign_syntax("Packages/JavaScript/JSON.sublime-syntax")
 
 
 class SerialMonitorNewFilterFromTextCommand(SerialMonitorNewFilterCommand):
