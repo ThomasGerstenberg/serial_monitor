@@ -330,6 +330,11 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         :type list_type: SerialMonitorCommand.PortListType or int
         """
         def wrapper(command_args):
+            def _port_assigned():
+                self.default_settings = SerialSettings.load_defaults(command_args.comport)
+                self.last_settings.set("comport", command_args.comport)
+                command_args.callback(command_args)
+
             open_port_names = sorted(self.open_ports)
 
             if list_type == self.PortListType.AVAILABLE:
@@ -347,12 +352,13 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
 
             # If the comport is already specified, skip the selection process
             if command_args.comport:
-                command_args.callback(command_args)
+                _port_assigned()
                 return
+
             # If there's only one port in the list, skip the selection process
             if len(command_args.port_list) == 1:
                 command_args.comport = command_args.port_list[0]
-                command_args.callback(command_args)
+                _port_assigned()
                 return
 
             index = -1
@@ -364,11 +370,8 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
             def _port_selected(selected_index):
                 if selected_index == -1:  # Cancelled
                     return
-
                 command_args.comport = command_args.port_list[selected_index]
-                self.default_settings = SerialSettings.load_defaults(command_args.comport)
-                self.last_settings.set("comport", command_args.comport)
-                command_args.callback(command_args)
+                _port_assigned()
 
             sublime.active_window().show_quick_panel(command_args.port_list, _port_selected,
                                                      flags=sublime.KEEP_OPEN_ON_FOCUS_LOST, selected_index=index)
