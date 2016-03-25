@@ -28,3 +28,7 @@ class SerialMonitorEventListener(sublime_plugin.EventListener):
                 # Page Down was pressed and there are more entries in the history
                 elif cmd_args["forward"] and entry_history.has_previous():
                     return "serial_monitor_update_entry", {"text": entry_history.get_previous()}
+
+
+def add_text_to_history(text):
+    entry_history.add_entry(text)
