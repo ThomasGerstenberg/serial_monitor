@@ -20,7 +20,6 @@ class SerialMonitorWriteCommand(sublime_plugin.TextCommand):
         :type args: dict
         :return:
         """
-
         # Check if the end of the output file is visible.  If so, enable the auto-scroll
         should_autoscroll = self.view.visible_region().contains(self.view.size())
 

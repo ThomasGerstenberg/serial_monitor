@@ -11,6 +11,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "serial"))
 import serial_monitor_thread
 from serial_settings import SerialSettings
 from serial_filter import FilterFile, FilterParsingError, FilterAttributeError, FilterException
+import command_history_event_listener
 
 # Check if test mode is enabled
 TEST_MODE = False
@@ -34,9 +35,6 @@ import serial_constants
 BAUD_RATES = ["9600", "19200", "38400", "57600", "115200"]
 
 
-
-
-
 class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
     """
     Main class for running commands using the serial monitor
@@ -51,8 +49,6 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
 
     def __init__(self):
         super(SerialMonitorCommand, self).__init__()
-        self.syntax_file = "Packages/serial_monitor/syntax/serial_monitor.tmLanguage"
-
         self.default_settings = SerialSettings(None)
 
         try:
@@ -153,10 +149,11 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         # Callback to send the text to the SerialMonitorThread that handles the read/write for the port
         def _text_entered(text):
             output_view = self.open_ports[command_args.comport].view
+            output_view.window().focus_view(output_view)
             output_view.window().run_command("serial_monitor_scroll", {"view_id": output_view.id()})
             self.open_ports[command_args.comport].write_line(text + "\n")
             self.write_line(command_args)
-            entry_history.add_entry(text)
+            command_history_event_listener.add_text_to_history(text)
 
         # Callback for when text was entered into the input panel.
         # If the user enters a newline (shift+enter), send it to the serial port since the entry is single lined
@@ -197,6 +194,7 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
             regions.append(sublime.Region(0, view.size()))
 
         output_view = self.open_ports[command_args.comport].view
+        output_view.window().focus_view(output_view)
         output_view.window().run_command("serial_monitor_scroll", {"view_id": output_view.id()})
         self.open_ports[command_args.comport].write_file(view, regions)
 
