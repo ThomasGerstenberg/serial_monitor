@@ -4,7 +4,7 @@ import sublime
 class SerialSettings(object):
     SETTINGS_FILE = "serial_monitor.sublime-settings"
 
-    _SETTINGS_LIST = [
+    SETTINGS_LIST = [
         "comport",
         "baud",
         "text",
@@ -12,7 +12,7 @@ class SerialSettings(object):
         "enable_timestamps",
         "line_endings",
         "local_echo",
-        "full_config_on_connect"
+        "full_config_on_connect",
         "data_bits",
         "parity",
         "stop_bits",
@@ -32,15 +32,15 @@ class SerialSettings(object):
         self.parity = None
         self.stop_bits = None
 
-        for attr in self._SETTINGS_LIST:
-            setattr(self, attr, args.get(attr))
+        for attr in self.SETTINGS_LIST:
+            setattr(self, attr, args.get(attr, None))
 
     @staticmethod
     def load_defaults(comport):
         defaults = sublime.load_settings(SerialSettings.SETTINGS_FILE)
         settings = SerialSettings(None)
 
-        for attr in SerialSettings._SETTINGS_LIST:
+        for attr in SerialSettings.SETTINGS_LIST:
             v = defaults.get(attr, None)
             if v is not None:
                 setattr(settings, attr, v)
@@ -49,7 +49,7 @@ class SerialSettings(object):
         if comport:
             comport_settings = defaults.get(comport, None)
             if comport_settings:
-                for attr in SerialSettings._SETTINGS_LIST:
+                for attr in SerialSettings.SETTINGS_LIST:
                     v = comport_settings.get(attr, None)
                     if v is not None:
                         setattr(settings, attr, v)

@@ -145,7 +145,6 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         :param command_args: The info of the port to write to
         :type command_args: SerialSettings
         """
-
         # Callback to send the text to the SerialMonitorThread that handles the read/write for the port
         def _text_entered(text):
             output_view = self.open_ports[command_args.comport].view
@@ -377,6 +376,12 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         view.set_syntax_file(serial_constants.SYNTAX_FILE)
         return view
 
+    def _merge_args_with_defaults(self, command_args):
+        for attr in SerialSettings.SETTINGS_LIST:
+            if getattr(command_args, attr) is None:
+                default_value = getattr(self.default_settings, attr)
+                setattr(command_args, attr, default_value)
+
     def _create_port(self, command_args):
         """
         Creates and starts a SerialMonitorThread with the port info given
@@ -393,20 +398,10 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
 
         sm_thread = serial_monitor_thread.SerialMonitor(command_args.comport, serial_port, view, window)
 
-        if command_args.enable_timestamps is not None:
-            sm_thread.enable_timestamps(command_args.enable_timestamps)
-        else:
-            sm_thread.enable_timestamps(self.default_settings.enable_timestamps)
-
-        if command_args.line_endings is not None:
-            sm_thread.set_line_endings(command_args.line_endings)
-        else:
-            sm_thread.set_line_endings(self.default_settings.line_endings)
-
-        if command_args.local_echo is not None:
-            sm_thread.set_local_echo(command_args.local_echo)
-        else:
-            sm_thread.set_local_echo(self.default_settings.local_echo)
+        self._merge_args_with_defaults(command_args)
+        sm_thread.enable_timestamps(command_args.enable_timestamps)
+        sm_thread.set_line_endings(command_args.line_endings)
+        sm_thread.set_local_echo(command_args.local_echo)
 
         self.open_ports[command_args.comport] = sm_thread
         sm_thread.start()
