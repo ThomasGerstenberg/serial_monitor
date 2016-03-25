@@ -1,7 +1,6 @@
 import sublime
 import sublime_plugin
 import os
-
 import serial_constants
 
 
@@ -59,15 +58,6 @@ class SerialMonitorScrollCommand(sublime_plugin.WindowCommand):
         self.window.focus_view(view)
         view.show(view.size())
         self.window.focus_view(last_focused)
-
-
-class SerialMonitorUpdateEntryCommand(sublime_plugin.TextCommand):
-    """
-    Updates the serial monitor input view with the text provided
-    """
-    def run(self, edit, text):
-        self.view.erase(edit, sublime.Region(0, self.view.size()))
-        self.view.insert(edit, 0, text)
 
 
 class SerialMonitorNewFilterCommand(sublime_plugin.TextCommand):

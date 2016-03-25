@@ -63,7 +63,7 @@ class _FilterManager(object):
             with self.filter_lock:
                 i = filter_files.index(filter_to_remove)
                 filter_args = self._filters[i]
-                filter_args.write("Filtering Disabled")
+                filter_args.write("Filter Disabled")
                 self._filters.remove(filter_args)
 
     def port_closed(self, port_name):
@@ -86,12 +86,13 @@ class _FilterManager(object):
         for line in lines:
             with self.filter_lock:
                 for f in self._filters:
-                    if not f.view or not f.view.is_valid() or not f.filter_file:
+                    if not f.view or not f.filter_file:
                         continue
+
                     if not f.view.is_valid():
                         filters_to_remove.append(f)
-                        continue
-                    f.apply(line, timestamp)
+                    else:
+                        f.apply(line, timestamp)
 
         # If any filters have invalid views, remove from the list
         with self.filter_lock:
@@ -175,14 +176,25 @@ class SerialMonitor(threading.Thread):
     def filters(self):
         return self._filter_manager.filters()
 
-    def _write_text_to_file(self, text):
-        if not self.view.is_valid() or not text:
-            return
+    def _sublime_line_endings_to_serial(self, text):
+        if self.line_endings == "CR":
+            text.replace("\n", "\r")
+        elif self.line_endings == "CRLF":
+            text.replace("\n", "\r\n")
+        return text
 
+    def _serial_line_endings_to_sublime(self, text):
         if self.line_endings == "CR":
             text = text.replace("\r", "\n")
         elif self.line_endings == "CRLF":
             text = text.replace("\r", "")
+        return text
+
+    def _write_text_to_file(self, text):
+        if not self.view.is_valid() or not text:
+            return
+
+        text = self._serial_line_endings_to_sublime(text)
 
         timestamp = ""
         if self.timestamp_logging:
@@ -214,7 +226,7 @@ class SerialMonitor(threading.Thread):
             main_thread(self.view.run_command, "serial_monitor_write", {"text": text})
 
     def _read_serial(self):
-        serial_input = self.serial.read(512)
+        serial_input = self.serial.read(1024)
         if serial_input:
             self._write_text_to_file(serial_input.decode(encoding="ascii", errors="replace"))
 
@@ -227,8 +239,11 @@ class SerialMonitor(threading.Thread):
         # Write any text in the queue to the serial port
         while text_list:
             text = text_list.pop(0)
+
             if self.local_echo:
                 self._write_text_to_file(text)
+
+            text = self._sublime_line_endings_to_serial(text)
             self.serial.write(bytes(text, encoding="ascii"))
             self._read_serial()
 
@@ -245,6 +260,8 @@ class SerialMonitor(threading.Thread):
                     for line in lines:
                         if self.local_echo:
                             self._write_text_to_file(line)
+
+                        line = self._sublime_line_endings_to_serial(line)
                         self.serial.write(bytes(line, encoding="ascii"))
                         self._read_serial()
 

@@ -9,7 +9,6 @@ sys.path.append(os.path.dirname(__file__))
 sys.path.append(os.path.join(os.path.dirname(__file__), "serial"))
 
 import serial_monitor_thread
-from command_history import CommandHistory
 from serial_settings import SerialSettings
 from serial_filter import FilterFile, FilterParsingError, FilterAttributeError, FilterException
 
@@ -34,23 +33,7 @@ import serial_constants
 # List of baud rates to choose from when opening a serial port
 BAUD_RATES = ["9600", "19200", "38400", "57600", "115200"]
 
-entry_history = CommandHistory()
 
-
-class SerialMonitorEventListener(sublime_plugin.EventListener):
-    def on_text_command(self, view, command, cmd_args):
-        """
-        Runs every time a text command is executed on a view.  If the view is the "serial input" view and
-        the command is Page Up/Down, replace the command with the serial monitor update entry command
-        """
-        if view.settings().get("serial_input"):
-            if command == "move" and cmd_args["by"] == "pages":
-                # Page Up was pressed and there's more entries in the history
-                if not cmd_args["forward"] and entry_history.has_next():
-                    return "serial_monitor_update_entry", {"text": entry_history.get_next()}
-                # Page Down was pressed and there are more entries in the history
-                elif cmd_args["forward"] and entry_history.has_previous():
-                    return "serial_monitor_update_entry", {"text": entry_history.get_previous()}
 
 
 
@@ -386,8 +369,6 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
 
         :return: The newly created view
         """
-        last_focused = window.active_view()
-
         filename = "{0}_{1}_{2}.txt".format(comport.replace("/dev/", "", 1), suffix, time.strftime("%m-%d-%y_%H-%M-%S", time.localtime()))
         if window.num_groups() > 1:
             window.focus_group(1)
@@ -396,8 +377,6 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         view.set_name(filename)
         view.set_read_only(True)
         view.set_syntax_file(serial_constants.SYNTAX_FILE)
-        window.focus_view(last_focused)
-
         return view
 
     def _create_port(self, command_args):

@@ -32,5 +32,3 @@ class CommandHistory(object):
         if self.has_next():
             self.index += 1
             return self._entries[self.index]
-
-    

@@ -20,9 +20,13 @@
             "method": "contains",
 
             // the 'case_sensitive' field is optional, the default value is 'false'
-            "case_sensitive": true,
+            "case_sensitive": false,
+
+            // the 'exclude' field is optional, the default value is 'false'. This will do what is expected-- if the matching text is found,
+            // it is not included in the output. Note that mixing exclude and include filters in a single file may produce some interesting results,
+            // as filters are 'or'ed together.
+            "exclude": false,
         },
         // Add another filter here...
     ]
 }
-
