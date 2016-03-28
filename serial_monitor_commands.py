@@ -11,7 +11,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "serial"))
 import serial_monitor_thread
 from serial_settings import SerialSettings
 from serial_filter import FilterFile, FilterParsingError, FilterAttributeError, FilterException
-import command_history_event_listener
+from . import command_history_event_listener
 
 # Check if test mode is enabled
 TEST_MODE = False
