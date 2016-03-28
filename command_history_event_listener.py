@@ -1,6 +1,6 @@
 import sublime
 import sublime_plugin
-from command_history import CommandHistory
+from .command_history import CommandHistory
 
 entry_history = CommandHistory()
 
