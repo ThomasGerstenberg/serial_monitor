@@ -5,27 +5,30 @@
      * Multiline and // single line comments are valid, however inline comments are NOT valid
      */
     
+    // [Required Fields]: "name": str, "filters": array of objects
+    
     // Filters should be uniquely named.  This is how the filters are identified in the drop-down list when applying a filter to a serial port.
-    // This file doesn't even need to be saved, just open in a sublime tab for the serial monitor to find it
+    // This file doesn't need to be saved, just open in a sublime tab for the serial monitor to find it
     "name": "My Filter",
 
-    // One or more filters to filter text through.  This array should be interpreted as "only show me text which satisfies one of these filters"
-    // The text is parsed on a line-by-line basis; multiline filters will not work
+    // [Optional] If this flag is set to true, then the filtering is in exclusion mode.  Default value is 'false'
+    "exclude": false,
+
+    // Array of one or more filters to filter the output through.  This array should be interpreted as "only show me text which satisfies one of these filters".
+    // If the "exclude" flag is set above, the array should be interpreted as "only show me text that doesn't include any of these filters".
+    // Note: The text is parsed on a line-by-line basis; multiline filters will not work
     "filters":
     [
         {
-            // A filter must contain a 'text' field (the filtering text) and a 'method field'.
-            // Valid method values: 'contains', 'exact', 'startswith', 'endswith', 'regex'.  What they do should be self-explanitory
+            // [Required Fields]: "text": str, "method": str
+            
+            // The text to filter on
             "text": "$1",
+            // Valid method values: 'contains', 'exact', 'startswith', 'endswith', 'regex'.  What they do should be self-explanitory
             "method": "contains",
 
-            // the 'case_sensitive' field is optional, the default value is 'false'
+            // [Optional] whether the filter is case-sensitive. Default value is 'false'
             "case_sensitive": false,
-
-            // the 'exclude' field is optional, the default value is 'false'. This will do what is expected-- if the matching text is found,
-            // it is not included in the output. Note that mixing exclude and include filters in a single file may produce some interesting results,
-            // as filters are 'or'ed together.
-            "exclude": false,
         },
         // Add another filter here...
     ]

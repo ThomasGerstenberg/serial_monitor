@@ -30,10 +30,9 @@ class _Filter(object):
     """
     Base filter class
     """
-    def __init__(self, filter_text, case_sensitive, exclude):
+    def __init__(self, filter_text, case_sensitive):
         self.filter_text = filter_text
         self.case_sensitive = case_sensitive
-        self.exclude = exclude
 
     def matches(self, text):
         """
@@ -45,21 +44,8 @@ class _Filter(object):
         """
         raise NotImplementedError
 
-    @staticmethod
-    def check_against_exclude(matching_func):
-        """
-        Decorator for matches functions that will check against the exclude flag in the class
-
-        :param matching_func: the _Filter.matches function
-        :return: True if the text should be included
-        """
-        def inner(self, text):
-            return matching_func(self, text) ^ self.exclude
-        return inner
-
 
 class _FilterContains(_Filter):
-    @_Filter.check_against_exclude
     def matches(self, text):
         if self.case_sensitive:
             return self.filter_text in text
@@ -67,7 +53,6 @@ class _FilterContains(_Filter):
 
 
 class _FilterEndsWith(_Filter):
-    @_Filter.check_against_exclude
     def matches(self, text):
         if self.case_sensitive:
             return text.endswith(self.filter_text)
@@ -75,14 +60,12 @@ class _FilterEndsWith(_Filter):
 
 
 class _FilterStartsWith(_Filter):
-    @_Filter.check_against_exclude
     def matches(self, text):
         if self.case_sensitive:
             return text.startswith(self.filter_text)
         return text.lower().startswith(self.filter_text.lower())
 
 class _FilterExact(_Filter):
-    @_Filter.check_against_exclude
     def matches(self, text):
         if self.case_sensitive:
             return text == self.filter_text
@@ -90,14 +73,13 @@ class _FilterExact(_Filter):
 
 
 class _FilterRegex(_Filter):
-    def __init__(self, filter_text, case_sensitive, exclude):
-        super(_FilterRegex, self).__init__(filter_text, case_sensitive, exclude)
+    def __init__(self, filter_text, case_sensitive):
+        super(_FilterRegex, self).__init__(filter_text, case_sensitive)
         flags = None
         if not case_sensitive:
             flags = re.IGNORECASE
         self.pattern = re.compile(filter_text, flags=flags)
 
-    @_Filter.check_against_exclude
     def matches(self, text):
         return self.pattern.search(text) is not None
 
@@ -115,17 +97,18 @@ class FilterFile(object):
     # filter file parameters
     KEY_NAME = "name"
     KEY_FILTERS = "filters"
+    KEY_EXCLUDE = "exclude"
     # filter parameters
     KEY_METHOD = "method"
     KEY_TEXT = "text"
     KEY_CASE_SENS = "case_sensitive"
-    KEY_EXCLUDE = "exclude"
     REQUIRED_FILTER_PARAMS = [KEY_TEXT, KEY_METHOD]
     REQUIRED_FILTER_FILE_PARAMS = [KEY_NAME, KEY_FILTERS]
 
-    def __init__(self, name, filter_list):
+    def __init__(self, name, filter_list, exclude=False):
         self.name = name
         self.filter_list = filter_list
+        self.exclude = exclude
 
     @staticmethod
     def parse_filter_file(file_text, skip_invalid_filters=False):
@@ -151,6 +134,12 @@ class FilterFile(object):
             return None
 
         name = file[FilterFile.KEY_NAME]
+
+        exclude = file.get(FilterFile.KEY_EXCLUDE, False)
+        if not isinstance(exclude, bool):
+            print("Bad exclude value {}. Defaulting to false".format(exclude))
+            exclude = False
+
         filter_list = []
         i = -1
         for f in file[FilterFile.KEY_FILTERS]:
@@ -172,19 +161,14 @@ class FilterFile(object):
             filter_type = filters[method]
 
             case_sensitive = f.get(FilterFile.KEY_CASE_SENS, False)
-            exclude = f.get(FilterFile.KEY_EXCLUDE, False)
-            text = f[FilterFile.KEY_TEXT]
+            text = str(f[FilterFile.KEY_TEXT])
 
             if not isinstance(case_sensitive, bool):
                 print("Bad case_sensitive value {}. Defaulting to false".format(case_sensitive))
                 case_sensitive = False
 
-            if not isinstance(exclude, bool):
-                print("Bad exclude value {}. Defaulting to false".format(exclude))
-                exclude = False
-
-            filter_list.append(filter_type(text, case_sensitive, exclude))
-        return FilterFile(name, filter_list)
+            filter_list.append(filter_type(text, case_sensitive))
+        return FilterFile(name, filter_list, exclude)
 
     def check_filters(self, text):
         """
@@ -197,6 +181,9 @@ class FilterFile(object):
         :rtype: bool
         """
         for f in self.filter_list:
+            # Check the filter files.  If a match is found, return the correct value based on the exclude flag
             if f.matches(text):
-                return True
-        return False
+                return not self.exclude
+
+        # No match found, which means that if the exclude flag is set, then include the text, and opposite if exclude is not set
+        return self.exclude
