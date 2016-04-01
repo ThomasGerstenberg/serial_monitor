@@ -35,6 +35,39 @@ import serial_constants
 BAUD_RATES = ["9600", "19200", "38400", "57600", "115200"]
 
 
+class SerialOptionSelector(object):
+    def __init__(self, items, header=None):
+        self.items = items.copy()
+        self.header = header
+        if header:
+            self.items.insert(0, header)
+
+    def select_item(self, callback, starting_index=0):
+        if self.header:
+            starting_index += 1
+
+        starting_index = min(starting_index, len(self.items))
+        starting_index = max(starting_index, 0)
+
+        print("Items to choose from: {}".format(self.items))
+
+        def item_selected(selected_index):
+            print("Callback, index: {}".format(selected_index))
+            if selected_index == -1:
+                return
+            if self.header and selected_index  == 0:
+                self.select_item(callback, -1)
+                return
+
+            item = self.items[selected_index]
+            if self.header:
+                selected_index -= 1
+
+            callback(item, selected_index)
+
+        sublime.active_window().show_quick_panel(self.items, item_selected, flags=sublime.KEEP_OPEN_ON_FOCUS_LOST, selected_index=starting_index)
+
+
 class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
     """
     Main class for running commands using the serial monitor
@@ -94,6 +127,12 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         :type command_args: SerialSettings
         """
 
+        # Callback function for the baud selection quick panel
+        def baud_selected(baud_rate, index):
+            command_args.baud = baud_rate
+            self.last_settings.set("baud", baud_rate)
+            self._create_port(command_args)
+
         if self.default_settings.baud is not None:
             command_args.baud = self.default_settings.baud
 
@@ -107,15 +146,9 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         if baud in BAUD_RATES:
             index = BAUD_RATES.index(str(baud))
 
-        # Callback function for the baud selection quick panel
-        def _baud_selected(selected_index):
-            if selected_index == -1:  # Cancelled
-                return
-            command_args.baud = BAUD_RATES[selected_index]
-            self.last_settings.set("baud", BAUD_RATES[selected_index])
-            self._create_port(command_args)
-
-        sublime.active_window().show_quick_panel(BAUD_RATES, _baud_selected, flags=sublime.KEEP_OPEN_ON_FOCUS_LOST, selected_index=index)
+        print("Selecting Baud")
+        selector = SerialOptionSelector(BAUD_RATES, "Select Baud Rate:")
+        selector.select_item(baud_selected, index)
 
     def disconnect(self, command_args):
         """
@@ -229,16 +262,16 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         :type command_args: SerialSettings
         """
         # Choice list is arranged so that disable maps to 0 (False), enable maps to 1 (True)
-        choice_list = ["Disable Timestamp Logging", "Enable Timestamp Logging"]
+        choice_list = ["Disable", "Enable"]
 
-        def _logging_selected(selected_index):
-            if selected_index != -1:  # Cancelled
-                self.open_ports[command_args.comport].enable_timestamps(selected_index)
+        def _logging_selected(item, selected_index):
+            self.open_ports[command_args.comport].enable_timestamps(selected_index)
 
         if command_args.enable_timestamps is not None:
             self.open_ports[command_args.comport].enable_timestamps(command_args.enable_timestamps)
         else:
-            sublime.active_window().show_quick_panel(choice_list, _logging_selected )
+            selector = SerialOptionSelector(choice_list, "Timestamp Logging:")
+            selector.select_item(_logging_selected)
 
     def line_endings(self, command_args):
         """
@@ -250,14 +283,17 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         """
         choice_list = ["CR", "LF", "CRLF"]
 
-        def _line_endings_selected(selected_index):
-            if selected_index != -1:
-                self.open_ports[command_args.comport].set_line_endings(choice_list[selected_index])
+        def _line_endings_selected(line_ending, selected_index):
+            self.open_ports[command_args.comport].set_line_endings(line_ending)
 
         if command_args.line_endings is not None:
             self.open_ports[command_args.comport].set_line_endings(command_args.line_endings)
         else:
-            sublime.active_window().show_quick_panel(choice_list, _line_endings_selected)
+            selector = SerialOptionSelector(choice_list, "Line Endings:")
+            selector.select_item(_logging_selected)
+
+    def configure_port(self, comand_args):
+        pass
 
     def filter(self, command_args):
         """
@@ -271,14 +307,15 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
 
         filters = self.open_ports[command_args.comport].filters()
 
-        def _enable_disable_selected(selected_index):
+        def _enable_disable_selected(item, selected_index):
             if selected_index == 1:
                 self._select_filtering_file(command_args, filters, False)
             elif selected_index == 0:
                 self._select_filtering_file(command_args)
 
         if len(filters) != 0:
-            sublime.active_window().show_quick_panel(choice_list, _enable_disable_selected)
+            selector = SerialOptionSelector(choice_list)
+            selector.select_item(_enable_disable_selected)
         else:
             self._select_filtering_file(command_args)
 
@@ -290,16 +327,16 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         :param command_args: The info of the port to configure
         :type command_args: SerialSettings
         """
-        choice_list = ["Disable Local Echo", "Enable Local Echo"]
+        choice_list = ["Disable", "Enable"]
 
-        def _echo_selected(selected_index):
-            if selected_index != -1:
-                self.open_ports[command_args.comport].set_local_echo(selected_index)
+        def _echo_selected(item, selected_index):
+            self.open_ports[command_args.comport].set_local_echo(selected_index)
 
         if command_args.local_echo is not None:
             self.open_ports[command_args.comport].set_local_echo(command_args.local_echo)
         else:
-            sublime.active_window().show_quick_panel(choice_list, _echo_selected)
+            selector = SerialOptionSelector(choice_list, "Local Echo:")
+            selector.select_item(_echo_selected)
 
     def _select_port_wrapper(self, func, list_type):
         """
@@ -347,14 +384,13 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
                 index = command_args.port_list.index(comport)
 
             # Callback function for the port selection quick panel
-            def _port_selected(selected_index):
-                if selected_index == -1:  # Cancelled
-                    return
-                command_args.comport = command_args.port_list[selected_index]
+            def _port_selected(selected_comport, selected_index):
+                command_args.comport = selected_comport
                 _port_assigned()
 
-            sublime.active_window().show_quick_panel(command_args.port_list, _port_selected,
-                                                     flags=sublime.KEEP_OPEN_ON_FOCUS_LOST, selected_index=index)
+            selector = SerialOptionSelector(command_args.port_list, "Select Port:")
+            selector.select_item(_port_selected, index)
+
         return wrapper
 
     def _create_new_view(self, window, comport, suffix=""):
@@ -417,8 +453,7 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
                     if view in sm_views:
                         continue
 
-                    syntax = view.settings().get("syntax")
-                    if "json" not in syntax.lower():
+                    if "json" not in view.settings().get("syntax").lower():
                         continue
 
                     try:
@@ -435,21 +470,16 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
             return
 
         selection_header = "Select filter to {}:".format("add" if add_filter else "remove")
-        selections = [selection_header] + [f.name for f in filter_files]
+        selections = [f.name for f in filter_files]
         sm_thread = self.open_ports[command_args.comport]
 
-        def _filter_selected(selected_index):
-            if selected_index > 0:
-                filter_file = filter_files[selected_index - 1]
+        def _filter_selected(item, selected_index):
+                filter_file = filter_files[selected_index]
                 if add_filter:
                     filter_view = self._create_new_view(sublime.active_window(), command_args.comport, filter_file.name)
                     sm_thread.add_filter(filter_file, filter_view)
                 else:
                     sm_thread.remove_filter(filter_file)
-            elif selected_index == 0:
-                sublime.active_window().show_quick_panel(selections, _filter_selected, selected_index=0)
 
-        sublime.active_window().show_quick_panel(selections, _filter_selected, selected_index=1)
-
-
-
+        selector = SerialOptionSelector(selections, selection_header)
+        selector.select_item(_filter_selected)
