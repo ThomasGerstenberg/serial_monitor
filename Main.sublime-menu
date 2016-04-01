@@ -13,6 +13,9 @@
                     { "caption": "Disconnect",
                         "command": "serial_monitor", "args": {"serial_command": "disconnect"}},
 
+                    { "caption": "Reconfigure Port",
+                        "command": "serial_monitor", "args": {"serial_command": "reconfigure_port"}},
+
                     { "caption": "Write Line",
                         "command": "serial_monitor", "args": {"serial_command": "write_line"}},
 

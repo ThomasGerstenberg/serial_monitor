@@ -36,27 +36,44 @@ BAUD_RATES = ["9600", "19200", "38400", "57600", "115200"]
 
 
 class SerialOptionSelector(object):
+    """
+    Class that helps select items from Sublime's drop-down menu
+    """
     def __init__(self, items, header=None):
+        """
+        Creates the selector to show the items and header given
+
+        :param items: the selectable items to show in the drop-down
+        :type items: list or tuple of strings
+        :param header: optional non-selectable item to be shown as the first entry in the list
+        :type header: str
+        """
         self.items = items.copy()
         self.header = header
         if header:
             self.items.insert(0, header)
 
-    def select_item(self, callback, starting_index=0):
+    def show(self, callback, starting_index=0):
+        """
+        Shows the list for the user to choose from
+
+        :param callback: function to call when the user has selected an item.
+                         Should take 2 positional arguments: the string selected, the index selected
+        :param starting_index: the index of the initial item to be highlighted when shown
+        :type starting_index: int
+        """
+        starting_index = max(starting_index, 0)
         if self.header:
             starting_index += 1
-
         starting_index = min(starting_index, len(self.items))
-        starting_index = max(starting_index, 0)
-
-        print("Items to choose from: {}".format(self.items))
 
         def item_selected(selected_index):
-            print("Callback, index: {}".format(selected_index))
             if selected_index == -1:
+                # User cancelled, do not call callback
                 return
-            if self.header and selected_index  == 0:
-                self.select_item(callback, -1)
+            if self.header and selected_index == 0:
+                # User selected the header, show the dropdown again
+                self.show(callback, -1)
                 return
 
             item = self.items[selected_index]
@@ -91,17 +108,18 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
 
         # Map for the run command args and the functions to handle the command
         self.arg_map = {
-            "connect":    self._select_port_wrapper(self.connect, self.PortListType.AVAILABLE),
-            "disconnect": self._select_port_wrapper(self.disconnect, self.PortListType.OPEN),
-            "write_line": self._select_port_wrapper(self.write_line, self.PortListType.OPEN),
-            "write_file": self._select_port_wrapper(self.write_file, self.PortListType.OPEN),
-            "new_buffer": self._select_port_wrapper(self.new_buffer, self.PortListType.OPEN),
-            "clear_buffer": self._select_port_wrapper(self.clear_buffer, self.PortListType.OPEN),
+            "connect":           self._select_port_wrapper(self.connect, self.PortListType.AVAILABLE),
+            "disconnect":        self._select_port_wrapper(self.disconnect, self.PortListType.OPEN),
+            "reconfigure_port":  self._select_port_wrapper(self.reconfigure_port, self.PortListType.OPEN),
+            "write_line":        self._select_port_wrapper(self.write_line, self.PortListType.OPEN),
+            "write_file":        self._select_port_wrapper(self.write_file, self.PortListType.OPEN),
+            "new_buffer":        self._select_port_wrapper(self.new_buffer, self.PortListType.OPEN),
+            "clear_buffer":      self._select_port_wrapper(self.clear_buffer, self.PortListType.OPEN),
             "timestamp_logging": self._select_port_wrapper(self.timestamp_logging, self.PortListType.OPEN),
-            "line_endings": self._select_port_wrapper(self.line_endings, self.PortListType.OPEN),
-            "local_echo": self._select_port_wrapper(self.local_echo, self.PortListType.OPEN),
-            "filter": self._select_port_wrapper(self.filter, self.PortListType.OPEN),
-            "_port_closed": self.disconnected
+            "line_endings":      self._select_port_wrapper(self.line_endings, self.PortListType.OPEN),
+            "local_echo":        self._select_port_wrapper(self.local_echo, self.PortListType.OPEN),
+            "filter":            self._select_port_wrapper(self.filter, self.PortListType.OPEN),
+            "_port_closed":      self.disconnected
         }
         self.open_ports = {}
 
@@ -146,9 +164,8 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         if baud in BAUD_RATES:
             index = BAUD_RATES.index(str(baud))
 
-        print("Selecting Baud")
         selector = SerialOptionSelector(BAUD_RATES, "Select Baud Rate:")
-        selector.select_item(baud_selected, index)
+        selector.show(baud_selected, index)
 
     def disconnect(self, command_args):
         """
@@ -271,7 +288,7 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
             self.open_ports[command_args.comport].enable_timestamps(command_args.enable_timestamps)
         else:
             selector = SerialOptionSelector(choice_list, "Timestamp Logging:")
-            selector.select_item(_logging_selected)
+            selector.show(_logging_selected)
 
     def line_endings(self, command_args):
         """
@@ -290,10 +307,53 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
             self.open_ports[command_args.comport].set_line_endings(command_args.line_endings)
         else:
             selector = SerialOptionSelector(choice_list, "Line Endings:")
-            selector.select_item(_logging_selected)
+            selector.show(_line_endings_selected)
 
-    def configure_port(self, comand_args):
-        pass
+    def reconfigure_port(self, command_args):
+        """
+        Handler for the "reconfigure_port" command.
+        Is wrapped in the _select_port_wrapper to get the comport from the user
+
+        :param command_args: The info of the port to configure
+        :type command_args: SerialSettings
+        """
+        sm_thread = self.open_ports[command_args.comport]
+
+        baud_list = [b[0] for b in sm_thread.serial.getSupportedBaudrates()]
+        data_bits_list = [b[0] for b in sm_thread.serial.getSupportedByteSizes()]
+        stop_bits_list = [b[0] for b in sm_thread.serial.getSupportedStopbits()]
+        parity_list = sm_thread.serial.getSupportedParities()
+
+        config = list(sm_thread.get_config())
+
+        def stop_bits_selected(bits, index):
+            config[3] = float(bits)
+            if config[3] == int(bits):
+                config[3] = int(bits)
+
+            sm_thread.reconfigure_port(*config)
+
+        def parity_selected(parity, index):
+            config[2] = parity_list[index][1]
+            index = self._get_index_or_default(stop_bits_list, str(config[3]))
+            selector = SerialOptionSelector(stop_bits_list, "Select Stop Bits:")
+            selector.show(stop_bits_selected, index)
+
+        def data_bits_selected(bits, index):
+            config[1] = int(bits)
+            index = self._get_index_or_default([p[1] for p in parity_list], str(config[2]))
+            selector = SerialOptionSelector([p[0] for p in parity_list], "Select Parity:")
+            selector.show(parity_selected, index)
+
+        def baud_selected(baud, index):
+            config[0] = int(baud)
+            index = self._get_index_or_default(data_bits_list, str(config[1]))
+            selector = SerialOptionSelector(data_bits_list, "Select Data Bits:")
+            selector.show(data_bits_selected, index)
+
+        index = self._get_index_or_default(baud_list, str(config[0]))
+        selector = SerialOptionSelector(baud_list, "Select Baud Rate:")
+        selector.show(baud_selected, index)
 
     def filter(self, command_args):
         """
@@ -315,7 +375,7 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
 
         if len(filters) != 0:
             selector = SerialOptionSelector(choice_list)
-            selector.select_item(_enable_disable_selected)
+            selector.show(_enable_disable_selected)
         else:
             self._select_filtering_file(command_args)
 
@@ -336,7 +396,19 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
             self.open_ports[command_args.comport].set_local_echo(command_args.local_echo)
         else:
             selector = SerialOptionSelector(choice_list, "Local Echo:")
-            selector.select_item(_echo_selected)
+            selector.show(_echo_selected)
+
+    def _get_index_or_default(self, items, item, default=0):
+        """
+        Helper function to get the index of an item in a list, or return a default index if it's not there
+        :param items: the list to check in
+        :param item: the item to find
+        :param default: the default value to return if not found
+        :return: the index of the item in items
+        """
+        if item in items:
+            default = items.index(item)
+        return default
 
     def _select_port_wrapper(self, func, list_type):
         """
@@ -389,7 +461,7 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
                 _port_assigned()
 
             selector = SerialOptionSelector(command_args.port_list, "Select Port:")
-            selector.select_item(_port_selected, index)
+            selector.show(_port_selected, index)
 
         return wrapper
 
@@ -482,4 +554,4 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
                     sm_thread.remove_filter(filter_file)
 
         selector = SerialOptionSelector(selections, selection_header)
-        selector.select_item(_filter_selected)
+        selector.show(_filter_selected)
