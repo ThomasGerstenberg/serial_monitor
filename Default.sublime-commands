@@ -5,6 +5,9 @@
     {"caption": "Serial Monitor: Disconnect", "command": "serial_monitor",
         "args": {"serial_command": "disconnect"}},
 
+    {"caption": "Serial Monitor: Reconfigure Port", "command": "serial_monitor",
+        "args": {"serial_command": "reconfigure_port"}},
+
     {"caption": "Serial Monitor: Timestamp Logging", "command": "serial_monitor",
         "args": {"serial_command": "timestamp_logging"}},
 

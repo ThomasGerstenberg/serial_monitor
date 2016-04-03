@@ -125,7 +125,7 @@ class SerialMonitor(threading.Thread):
         self.view = view
         self.window = window
         self.lock = threading.Lock()
-        self.running = True
+        self.running = False
         self.timestamp_logging = False
         self.line_endings = "CRLF"
         self.local_echo = False
@@ -136,6 +136,12 @@ class SerialMonitor(threading.Thread):
         self._view_lock = threading.Lock()
         self._filter_manager = _FilterManager()
         self._newline = True
+
+        self._new_configuration = False
+        self._new_baud = None
+        self._new_data_bits = None
+        self._new_parity = None
+        self._new_stop_bits = None
 
     def write_line(self, text):
         with self._text_lock:
@@ -175,6 +181,16 @@ class SerialMonitor(threading.Thread):
 
     def filters(self):
         return self._filter_manager.filters()
+
+    def get_config(self):
+        return self.serial.baudrate, self.serial.bytesize, self.serial.parity, self.serial.stopbits
+
+    def reconfigure_port(self, baud, data_bits, parity, stop_bits):
+        self._new_baud = baud
+        self._new_data_bits = data_bits
+        self._new_parity = parity
+        self._new_stop_bits = stop_bits
+        self._new_configuration = True
 
     def _sublime_line_endings_to_serial(self, text):
         if self.line_endings == "CR":
@@ -266,6 +282,7 @@ class SerialMonitor(threading.Thread):
                         self._read_serial()
 
     def run(self):
+        self.running = True
         try:
             self.serial.port = self.comport
             self.serial.open()
@@ -273,6 +290,15 @@ class SerialMonitor(threading.Thread):
                 self._read_serial()
                 self._write_text()
                 self._write_file()
+
+                if self._new_configuration:
+                    self.serial.close()
+                    self.serial.baudrate = self._new_baud
+                    self.serial.bytesize = self._new_data_bits
+                    self.serial.parity = self._new_parity
+                    self.serial.stopbits = self._new_stop_bits
+                    self.serial.open()
+                    self._new_configuration = False
         except Exception as e:
             self._write_text_to_file("\nError occurred on port {0}: {1}".format(self.comport, str(e)))
         finally:
@@ -280,5 +306,6 @@ class SerialMonitor(threading.Thread):
             self._write_text_to_file("\nDisconnected from {0}".format(self.comport))
             self._filter_manager.port_closed(self.comport)
             self.serial.close()
+            self.running = False
             main_thread(self.window.run_command, "serial_monitor", {"serial_command": "_port_closed",
                                                                     "comport": self.comport})
