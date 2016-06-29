@@ -1,12 +1,14 @@
 import time
-from serial.serialutil import SerialBase
+
+from hardware.serial.serialutil import SerialBase
+
 
 class Serial(SerialBase):
     """
     Mock serial class
     """
-    def __init__(self, comport, baud, timeout=1, **kwargs):
-        super(Serial, self).__init__(comport, baud, timeout=timeout, **kwargs)
+    def __init__(self, comport, baud, *args, **kwargs):
+        super(Serial, self).__init__(comport, baud, *args, **kwargs)
         self.i = 0
         self.echo = ""
 

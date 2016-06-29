@@ -1,6 +1,8 @@
 import sys
 import glob
+
 from serial import Serial, SerialException
+
 
 
 # From http://stackoverflow.com/questions/12090503/listing-available-com-ports-with-python

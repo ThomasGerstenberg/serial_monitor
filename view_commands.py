@@ -66,7 +66,7 @@ class SerialMonitorNewFilterCommand(sublime_plugin.TextCommand):
     def run(self, edit, text="sample filter"):
         folder = os.path.split(__file__)[0]
 
-        file = os.path.join(folder, "default_serial_filter.json")
+        file = os.path.join(folder, "filter", "default_serial_filter.json")
 
         with open(file) as f:
             template = "".join(f.readlines())
