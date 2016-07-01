@@ -204,6 +204,8 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
                                                                   _text_entered, _text_changed, None)
             # Add setting to the view so it can be found by the event listener
             input_view.settings().set("serial_input", True)
+            input_view.settings().set("gutter", False)
+            input_view.assign_syntax("Packages/Python/Python.sublime-syntax")
 
     def write_file(self, command_args):
         """

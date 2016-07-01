@@ -39,7 +39,6 @@ class SerialMonitorEventListener(sublime_plugin.EventListener):
         if not view.settings().get("serial_input"):
             return
 
-        print("Queried")
         ret = []
         for i in range(1,12):
             ret.append(("t" * i,))
