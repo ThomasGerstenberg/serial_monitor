@@ -8,7 +8,7 @@ In sublime, go to `Preferences -> Browse packages`. It will open a window of the
 
 To install via git, clone the repository into this directory. For Windows, the directory will look someting like `C:\Users\${user}\AppData\Roaming\Sublime Text 3\Packages`
 
-To install without git, download the `serial_monitor.sublime-package` file from the [Releases](releases/latest) page
+To install without git, download the `serial_monitor.sublime-package` file from the [Releases](../../releases/latest) page
 Navigate up one directory from the location taken in the `Browse Packages`, then navigate into the folder `Installed Packages`
 Copy the `.sublime-package` file into this location
 
