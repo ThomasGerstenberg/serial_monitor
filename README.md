@@ -2,10 +2,20 @@
 
 This plugin is built upon [pyserial](https://github.com/pyserial/pyserial)
 
-To install, clone this repository into `C:\Users\${user}\AppData\Roaming\Sublime Text 3\Packages` and restart sublime
+### Installing
+
+In sublime, go to `Preferences -> Browse packages`. It will open a window of the packages location on your filesystem
+
+To install via git, clone the repository into this directory. For Windows, the directory will look someting like `C:\Users\${user}\AppData\Roaming\Sublime Text 3\Packages`
+
+To install without git, download the `serial_monitor.sublime-package` file from the [Releases](/releases/latest) page
+Navigate up one directory from the location taken in the `Browse Packages`, then navigate into the folder `Installed Packages`
+Copy the `.sublime-package` file into this location
+
+Restart Sublime
 
 ### Commands
-Commands are accessed through `Menu->Tools->Serial Monitor` or the Command Palette (`ctrl+shift+p`).  
+Commands are accessed through `Menu->Tools->Serial Monitor` or the Command Palette (`ctrl+shift+p`).
 For all commands, if multiple ports are available a list will first be shown to choose the comport to run the command on
 
 - `Connect`: Brings up dialogs to connect to a comport.  If more than one comport is available, brings up a list of available comports before choosing a baud rate
@@ -66,7 +76,7 @@ Currently supported `serial_command` values and optional args for each:
 
 - `local_echo`:
  - `"comport": str` - the comport to enable/disable local echo on
- 
+
 - `line_endings`:
  - `"line_endings": str` - THe line ending settings to use.  See above for valid values
 
