@@ -8,7 +8,7 @@ In sublime, go to `Preferences -> Browse packages`. It will open a window of the
 
 To install via git, clone the repository into this directory. For Windows, the directory will look someting like `C:\Users\${user}\AppData\Roaming\Sublime Text 3\Packages`
 
-To install without git, download the `serial_monitor.sublime-package` file from the [Releases](../../releases/latest) page
+To install without git, download the `serial_monitor.sublime-package` file from the [Releases](../../releases/latest) page.
 Navigate up one directory from the location taken in the `Browse Packages`, then navigate into the folder `Installed Packages`
 Copy the `.sublime-package` file into this location
 
@@ -42,9 +42,9 @@ For all commands, if multiple ports are available a list will first be shown to 
 - `New Filter`: Creates a new filter template file for the above command.  Template contains more details on the filtering as well.  Right clicking a single-line highlighted selection in the output window will bring up an option to create a filter from the selected text
 
 - `Line Endings`: Set the line endings type of the comport so the data is correctly displayed in the output.  Sublime only cares about Line Feeds, so the text will be edited based on the setting
- - `CR`: Line endings are carriage return characters only.  All `CR` characters (`\r`) will be converted to `LF` (`\n`)
- - `LF`: Line endings are line feed characters only.  No text manipulation occurs
- - `CRLF`: Line endings contain both `CR` and `LF`.  `CR` characters are removed (default)
+  - `CR`: Line endings are carriage return characters only.  All `CR` characters (`\r`) will be converted to `LF` (`\n`)
+  - `LF`: Line endings are line feed characters only.  No text manipulation occurs
+  - `CRLF`: Line endings contain both `CR` and `LF`.  `CR` characters are removed (default)
 
 - `Layout`: Switches the layout of the sublime window.  Left/Right puts all input files on the left and serial files on the right, Over/Under puts all input files on the top and output on the bottom
 
@@ -62,37 +62,37 @@ For those who want to use these commands for keybindings, etc.
 Currently supported `serial_command` values and optional args for each:
 
 - `"connect"`:
- - `"comport": str` - The comport to connect to
- - `"baud": int` - The baud rate to connect with
- - `"enable_timestamps": bool` - Enable or disable timestamped logging upon connection
- - `"line_endings": str` - The line ending settings to use.  Should be `CR`, `LF`, or `CRLF`
+  - `"comport": str` - The comport to connect to
+  - `"baud": int` - The baud rate to connect with
+  - `"enable_timestamps": bool` - Enable or disable timestamped logging upon connection
+  - `"line_endings": str` - The line ending settings to use.  Should be `CR`, `LF`, or `CRLF`
 
 - `"disconnect"`:
- - `"comport": str` - The comport to disconnect from
+  - `"comport": str` - The comport to disconnect from
 
 - `timestamp_logging`:
- - `"comport": str` - The comport to enable/disable timestamp logging on
- - `"enable_timestamps": bool` - True to enable, False to Disable
+  - `"comport": str` - The comport to enable/disable timestamp logging on
+  - `"enable_timestamps": bool` - True to enable, False to Disable
 
 - `local_echo`:
- - `"comport": str` - the comport to enable/disable local echo on
+  - `"comport": str` - the comport to enable/disable local echo on
 
 - `line_endings`:
- - `"line_endings": str` - THe line ending settings to use.  See above for valid values
+  - `"line_endings": str` - THe line ending settings to use.  See above for valid values
 
 - `new_buffer`:
- - `"comport": str` - The comport to create a new buffer for
+  - `"comport": str` - The comport to create a new buffer for
 
 - `clear_buffer`:
- - `"comport": str` - The comport to create a clear the buffer on
+  - `"comport": str` - The comport to create a clear the buffer on
 
 - `"write_line"`:
- - `"comport": str` - The comport to write a line to
- - `"text": str` - The text to write to the comport (newline appended to end automatically)
+  - `"comport": str` - The comport to write a line to
+  - `"text": str` - The text to write to the comport (newline appended to end automatically)
 
 - `"write_file"`:
- - `"comport": str` - The comport to write the currently active file to
- - `"override_selection": bool` - set to true if you want to write the whole file regardless if a region is currently selected
+  - `"comport": str` - The comport to write the currently active file to
+  - `"override_selection": bool` - set to true if you want to write the whole file regardless if a region is currently selected
 
 - `filter`:
- - `"comport": str` - the comport to enable/disable filtering on
+  - `"comport": str` - the comport to enable/disable filtering on
