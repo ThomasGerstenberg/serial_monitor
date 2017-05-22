@@ -2,6 +2,10 @@ import sublime
 import functools
 import threading
 import time
+import logger
+
+log = logger.get()
+
 
 def main_thread(callback, *args, **kwargs):
     """
@@ -119,7 +123,7 @@ class SerialMonitor(threading.Thread):
     Thread that controls a serial port's read, write, open, close, etc. and outputs the serial info to a sublime view
     """
     def __init__(self, comport, serial, view, window):
-        super(SerialMonitor, self).__init__()
+        super(SerialMonitor, self).__init__(name="Thread-{}".format(comport))
         self.comport = comport
         self.serial = serial
         self.view = view
@@ -300,8 +304,10 @@ class SerialMonitor(threading.Thread):
                     self.serial.open()
                     self._new_configuration = False
         except Exception as e:
+            log.exception(e)
             self._write_text_to_file("\nError occurred on port {0}: {1}".format(self.comport, str(e)))
         finally:
+            log.info("Disconnecting from {}".format(self.comport))
             # Thread terminated, write to buffer if still valid and close the serial port
             self._write_text_to_file("\nDisconnected from {0}".format(self.comport))
             self._filter_manager.port_closed(self.comport)

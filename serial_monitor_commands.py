@@ -1,7 +1,7 @@
 import sys
 import os
 import time
-
+import logger
 import sublime
 import sublime_plugin
 
@@ -13,9 +13,9 @@ from serial_settings import SerialSettings
 from serial_filter import FilterFile, FilterParsingError, FilterAttributeError, FilterException
 from . import command_history_event_listener
 
+settings = sublime.load_settings("serial_monitor.sublime-settings")
 # Check if test mode is enabled
 TEST_MODE = False
-settings = sublime.load_settings("serial_monitor.sublime-settings")
 if settings.get("test_mode"):
     print("Serial Monitor: Test Mode enabled")
     TEST_MODE = True
@@ -100,7 +100,7 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
     def __init__(self):
         super(SerialMonitorCommand, self).__init__()
         self.default_settings = SerialSettings(None)
-
+        self.logger = None
         try:
             self.last_settings = sublime.load_settings(serial_constants.LAST_USED_SETTINGS)
         except:
@@ -124,12 +124,15 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         self.open_ports = {}
 
     def run(self, serial_command, **args):
+        if not self.logger:
+            settings = sublime.load_settings("serial_monitor.sublime-settings")
+            self.logger = logger.create("serial_monitor", settings.get("log_level"))
         self.last_settings = sublime.load_settings(serial_constants.LAST_USED_SETTINGS)
-
+        self.logger.debug("Running command: {}, args: {}".format(serial_command, args))
         try:
             func = self.arg_map[serial_command]
         except KeyError:
-            print("Unknown serial command: {0}".format(serial_command))
+            self.logger.error("Unknown serial command: {0}".format(serial_command))
             return
 
         # Create a CommandArgs object to pass around the args
@@ -148,11 +151,13 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         # Callback function for the baud selection quick panel
         def baud_selected(baud_rate, index):
             command_args.baud = baud_rate
+            self.logger.debug("Baud rate selected: {}".format(baud_rate))
             self.last_settings.set("baud", baud_rate)
             self._create_port(command_args)
 
         if self.default_settings.baud is not None:
             command_args.baud = self.default_settings.baud
+            self.logger.debug("Default baud rate detected, using {}".format(command_args.baud))
 
         # If baud is already set, continue to port creation
         if command_args.baud is not None:
@@ -174,6 +179,7 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         :param command_args: The info of the port to disconnect from
         :type command_args: SerialSettings
         """
+        self.logger.debug("Running Disconnect command")
         self.open_ports[command_args.comport].disconnect()
 
     def disconnected(self, command_args):
@@ -197,6 +203,7 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         """
         # Callback to send the text to the SerialMonitorThread that handles the read/write for the port
         def _text_entered(text):
+            self.logger.debug("Writing line to serial port: '{}'".format(text))
             output_view = self.open_ports[command_args.comport].view
             output_view.window().focus_view(output_view)
             output_view.window().run_command("serial_monitor_scroll", {"view_id": output_view.id()})
@@ -255,6 +262,7 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         :param command_args: The info of the port to configure
         :type command_args: SerialSettings
         """
+        self.logger.debug("Clearing buffer for {}".format(command_args.comport))
         output_view = self.open_ports[command_args.comport].view
         output_view.run_command("serial_monitor_erase")
 
@@ -266,6 +274,7 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         :param command_args: The info of the port to configure
         :type command_args: SerialSettings
         """
+        self.logger.debug("Creating a new buffer for {}".format(command_args.comport))
         window = sublime.active_window()
         view = self._create_new_view(window, command_args.comport)
         self.open_ports[command_args.comport].set_output_view(view)
@@ -282,6 +291,7 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         choice_list = ["Disable", "Enable"]
 
         def _logging_selected(item, selected_index):
+            self.logger.debug("Setting timestamp logging to {}".format(item))
             self.open_ports[command_args.comport].enable_timestamps(selected_index)
 
         if command_args.enable_timestamps is not None:
@@ -301,6 +311,7 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         choice_list = ["CR", "LF", "CRLF"]
 
         def _line_endings_selected(line_ending, selected_index):
+            self.logger.debug("Setting line endings to {}".format(line_ending))
             self.open_ports[command_args.comport].set_line_endings(line_ending)
 
         if command_args.line_endings is not None:
@@ -331,6 +342,7 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
             if config[3] == int(bits):
                 config[3] = int(bits)
 
+            self.logger.info("Reconfiguring port: {} baud, {} data, {} parity, {} stop)".format(*config))
             sm_thread.reconfigure_port(*config)
 
         def parity_selected(parity, index):
@@ -390,6 +402,7 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         choice_list = ["Disable", "Enable"]
 
         def _echo_selected(item, selected_index):
+            self.logger.debug("Setting local echo to {}".format(item))
             self.open_ports[command_args.comport].set_local_echo(selected_index)
 
         if command_args.local_echo is not None:
@@ -457,6 +470,7 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
 
             # Callback function for the port selection quick panel
             def _port_selected(selected_comport, selected_index):
+                self.logger.debug("Port selected: {}".format(selected_comport))
                 command_args.comport = selected_comport
                 _port_assigned()
 
@@ -499,6 +513,7 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         """
 
         # Create the serial port without specifying the comport so it does not automatically open
+        self.logger.info("Creating serial port: {}, baud: {}".format(command_args.comport, command_args.baud))
         serial_port = serial.Serial(None, command_args.baud, timeout=0.05)
 
         window = sublime.active_window()
