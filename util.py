@@ -25,9 +25,9 @@ def sublime_line_endings_to_serial(text, line_endings):
     :return: the new text
     """
     if line_endings == "CR":
-        text.replace("\n", "\r")
-    elif line_endings == "CRLF":
-        text.replace("\n", "\r\n")
+        return text.replace("\n", "\r")
+    if line_endings == "CRLF":
+        return text.replace("\n", "\r\n")
     return text
 
 
@@ -40,7 +40,7 @@ def serial_line_endings_to_sublime(text, line_endings):
     :return: the new text
     """
     if line_endings == "CR":
-        text = text.replace("\r", "\n")
-    elif line_endings == "CRLF":
-        text = text.replace("\r", "")
+        return text.replace("\r", "\n")
+    if line_endings == "CRLF":
+        return text.replace("\r", "")
     return text
