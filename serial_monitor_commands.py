@@ -437,11 +437,11 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
                 self.last_settings.set("comport", command_args.comport)
                 command_args.callback(command_args)
 
-            open_port_names = sorted(self.open_ports)
+            open_port_names = sorted(self.open_ports.keys())
 
             if list_type == self.PortListType.AVAILABLE:
                 # Get a list of the available ports that aren't currently open
-                port_list = [c for c in list_ports() if c not in self.open_ports]
+                port_list = [c for c in list_ports(exclude=open_port_names) if c not in self.open_ports]
             else:
                 port_list = open_port_names
 
