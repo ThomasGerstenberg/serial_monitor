@@ -2,6 +2,9 @@ import threading
 import time
 import util
 from filter.manager import FilterManager
+import logger
+
+log = logger.get()
 
 
 class _WriteFileArgs(object):
@@ -50,7 +53,7 @@ class SerialMonitor(threading.Thread):
     :type stream: stream.AbstractStream
     """
     def __init__(self, stream, view, window):
-        super(SerialMonitor, self).__init__()
+        super(SerialMonitor, self).__init__(name="Thread-{}".format(stream.comport))
         self.stream = stream
         self.view = view
         self.window = window
@@ -184,7 +187,9 @@ class SerialMonitor(threading.Thread):
                     self._new_configuration = None
         except Exception as e:
             self._write_to_output("\nError occurred on port {0}: {1}".format(self.stream.comport, str(e)))
+            log.exception(e)
         finally:
+            log.info("Disconnecting from {}".format(self.stream.comport))
             # Thread terminated, write to buffer if still valid and close the serial port
             self._write_to_output("\nDisconnected from {0}".format(self.stream.comport))
             self._filter_manager.port_closed(self.stream.comport)

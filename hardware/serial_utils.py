@@ -6,13 +6,13 @@ from serial import Serial, SerialException
 
 
 # From http://stackoverflow.com/questions/12090503/listing-available-com-ports-with-python
-def list_ports():
-    """ Lists serial port names
+def list_ports(exclude=[]):
+    """
+    Lists serial port names
 
-        :raises EnvironmentError:
-            On unsupported or unknown platforms
-        :returns:
-            A list of the serial ports available on the system
+    :param exclude: The list of serial port names not to test
+    :raises EnvironmentError: On unsupported or unknown platforms
+    :returns: A list of the serial ports available on the system
     """
     if sys.platform.startswith('win'):
         ports = ['COM%s' % (i + 1) for i in range(256)]
@@ -26,6 +26,8 @@ def list_ports():
 
     result = []
     for port in ports:
+        if port in exclude:
+            continue
         try:
             s = Serial(port)
             s.close()
