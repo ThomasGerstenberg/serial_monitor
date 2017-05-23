@@ -1,4 +1,6 @@
-## Sublime 3 Serial Monitor
+## Sublime Text 3 Serial Monitor
+
+This plugin is an alternative to common serial/UART terminals like TeraTerm, Putty, miniterm, and the like
 
 This plugin is built upon [pyserial](https://github.com/pyserial/pyserial)
 
