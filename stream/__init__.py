@@ -2,12 +2,12 @@ from serial_settings import SerialSettings
 
 
 class AbstractStream(object):
-    def __init__(self, serial_config):
+    def __init__(self, config, name):
         """
-        :type serial_config: SerialSettings
+        :type name: str
         """
-        self.config = serial_config
-        self.comport = serial_config.comport
+        self.config = config
+        self.name = name
 
     def open(self):
         raise NotImplementedError
@@ -21,5 +21,5 @@ class AbstractStream(object):
     def write(self, data):
         raise NotImplementedError
 
-    def reconfigure(self, serial_config):
+    def reconfigure(self, config):
         raise NotImplementedError

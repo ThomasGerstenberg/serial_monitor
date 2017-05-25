@@ -53,7 +53,7 @@ class SerialMonitor(threading.Thread):
     :type stream: stream.AbstractStream
     """
     def __init__(self, stream, view, window):
-        super(SerialMonitor, self).__init__(name="Thread-{}".format(stream.comport))
+        super(SerialMonitor, self).__init__(name="Thread-{}".format(stream.name))
         self.stream = stream
         self.view = view
         self.window = window

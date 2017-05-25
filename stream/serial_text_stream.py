@@ -7,7 +7,7 @@ class SerialTextStream(AbstractStream):
         """
         :type serial_config: SerialSettings
         """
-        super(SerialTextStream, self).__init__(serial_config)
+        super(SerialTextStream, self).__init__(serial_config, serial_config.comport)
         self.comport = serial_config.comport
         kwargs = {}
         if serial_config.data_bits:
@@ -34,14 +34,14 @@ class SerialTextStream(AbstractStream):
     def write(self, data):
         self.serial.write(data)
 
-    def reconfigure(self, serial_config):
+    def reconfigure(self, config):
         """
-        :type serial_config: SerialSettings
+        :type config: SerialSettings
         """
         self.close()
-        self.serial.port = serial_config.comport
-        self.serial.baudrate = serial_config.baud
-        self.serial.bytesize = serial_config.data_bits
-        self.serial.parity = serial_config.parity
-        self.serial.stopbits = serial_config.stop_bits
+        self.serial.port = config.comport
+        self.serial.baudrate = config.baud
+        self.serial.bytesize = config.data_bits
+        self.serial.parity = config.parity
+        self.serial.stopbits = config.stop_bits
         self.open()
