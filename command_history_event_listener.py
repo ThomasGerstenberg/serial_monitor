@@ -31,18 +31,13 @@ class SerialMonitorEventListener(sublime_plugin.EventListener):
             elif cmd_args["forward"] and entry_history.has_previous():
                 return "serial_monitor_update_entry", {"text": entry_history.get_previous()}
 
-        if command == "reindent":
-            sel = view.sel()
-            return "serial_monitor_update_entry", {"text": str(sel)}
-
-    def on_query_completions(self, view, prefix, locations):
-        if not view.settings().get("serial_input"):
-            return
-
-        ret = []
-        for i in range(1,12):
-            ret.append(("t" * i,))
-        return ret
+    # TODO 5.22.17 - Get auto-complete to work in input box (Issue #83)
+    # def on_query_completions(self, view, prefix, locations):
+    #     if not view.settings().get("serial_input"):
+    #         return
+    #     print("Query prefix: {}".format(prefix))
+    #     entries = [[e] for e in entry_history.entries() if e.startswith(prefix)]
+    #     return entries
 
 def add_text_to_history(text):
     entry_history.add_entry(text)

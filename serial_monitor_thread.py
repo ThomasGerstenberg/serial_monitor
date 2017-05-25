@@ -181,9 +181,7 @@ class SerialMonitor(threading.Thread):
                 self._write_file()
 
                 if self._new_configuration:
-                    self.stream.close()
                     self.stream.reconfigure(self._new_configuration)
-                    self.stream.open()
                     self._new_configuration = None
         except Exception as e:
             self._write_to_output("\nError occurred on port {0}: {1}".format(self.stream.comport, str(e)))

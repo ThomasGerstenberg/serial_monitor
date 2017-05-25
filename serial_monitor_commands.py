@@ -211,7 +211,6 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
             # Add setting to the view so it can be found by the event listener
             input_view.settings().set("serial_input", True)
             input_view.settings().set("gutter", False)
-            input_view.assign_syntax("Packages/Python/Python.sublime-syntax")
 
     def write_file(self, command_args):
         """
@@ -327,11 +326,14 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
 
         def stop_bits_selected(bits, index):
             config.stop_bits = float(bits)
-            if config.stop_bits == int(bits):
+            try:
                 config.stop_bits = int(bits)
+            except ValueError:
+                pass
 
-            self.logger.info("Reconfiguring port: {} baud, {} data, {} parity, {} stop)".format(*config))
-            sm_thread.reconfigure_port(*config)
+            self.logger.info("Reconfiguring port: {}, baud: {}, data: {}, parity: {} stop: {}".format(
+                             config.comport, config.baud, config.data_bits, config.parity, config.stop_bits))
+            sm_thread.reconfigure_port(config)
 
         def parity_selected(parity, index):
             config.parity = parity_list[index][1]

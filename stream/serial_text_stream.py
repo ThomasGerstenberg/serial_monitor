@@ -20,11 +20,13 @@ class SerialTextStream(AbstractStream):
         self.serial = serial.Serial(None, serial_config.baud, **kwargs)
 
     def open(self):
-        self.serial.port = self.comport
-        self.serial.open()
+        if not self.serial.isOpen():
+            self.serial.port = self.comport
+            self.serial.open()
 
     def close(self):
-        self.serial.close()
+        if self.serial.isOpen():
+            self.serial.close()
 
     def read(self, num_bytes=1):
         return self.serial.read(num_bytes)

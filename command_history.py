@@ -14,6 +14,9 @@ class CommandHistory(object):
 
         self.index = 0
 
+    def entries(self):
+        return self._entries
+
     def get_entries_with(self, text):
         return [e.rstrip("\r") for e in self._entries if text in e]
 
