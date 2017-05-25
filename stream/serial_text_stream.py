@@ -1,4 +1,4 @@
-from hardware import serial
+from hardware import hardware_factory
 from stream import AbstractStream, SerialSettings
 
 
@@ -17,7 +17,7 @@ class SerialTextStream(AbstractStream):
         if serial_config.stop_bits:
             kwargs["stopbits"] = serial_config.stop_bits
         kwargs["timeout"] = 0.05
-        self.serial = serial.Serial(None, serial_config.baud, **kwargs)
+        self.serial = hardware_factory.create_serial(None, serial_config.baud, **kwargs)
 
     def open(self):
         if not self.serial.isOpen():

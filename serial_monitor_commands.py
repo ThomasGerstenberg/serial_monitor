@@ -12,7 +12,7 @@ from serial_settings import SerialSettings
 from filter.serial_filter import FilterFile, FilterException
 from . import command_history_event_listener
 
-from hardware import serial, list_ports
+from hardware import serial, hardware_factory
 from stream.serial_text_stream import SerialTextStream
 import serial_constants
 
@@ -431,7 +431,7 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
 
             if list_type == self.PortListType.AVAILABLE:
                 # Get a list of the available ports that aren't currently open
-                port_list = [c for c in list_ports(exclude=open_port_names) if c not in self.open_ports]
+                port_list = [c for c in hardware_factory.list_serial_ports(exclude=open_port_names) if c not in self.open_ports]
             else:
                 port_list = open_port_names
 
