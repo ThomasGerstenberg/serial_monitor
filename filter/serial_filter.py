@@ -3,8 +3,6 @@ import os
 import json
 import re
 
-sys.path.append(os.path.dirname(__file__))
-sys.path.append(os.path.join(os.path.dirname(__file__), "json_utils"))
 from json_utils import clean_json
 
 

@@ -1,34 +1,19 @@
 import sys
 import os
 import time
-import logger
 import sublime
 import sublime_plugin
 
 sys.path.append(os.path.dirname(__file__))
-sys.path.append(os.path.join(os.path.dirname(__file__), "serial"))
 
+import logger
 import serial_monitor_thread
 from serial_settings import SerialSettings
-from serial_filter import FilterFile, FilterParsingError, FilterAttributeError, FilterException
+from filter.serial_filter import FilterFile, FilterException
 from . import command_history_event_listener
 
-settings = sublime.load_settings("serial_monitor.sublime-settings")
-# Check if test mode is enabled
-TEST_MODE = False
-if settings.get("test_mode"):
-    print("Serial Monitor: Test Mode enabled")
-    TEST_MODE = True
-del settings
-
-# Load the correct serial implementation based on TEST_MODE
-if not TEST_MODE:
-    import serial
-    from serial_utils import list_ports
-else:
-    import mock_serial as serial
-    from mock_serial.list_ports import list_ports
-
+from hardware import serial, hardware_factory
+from stream.serial_text_stream import SerialTextStream
 import serial_constants
 
 # List of baud rates to choose from when opening a serial port
@@ -225,6 +210,7 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
                                                                   _text_entered, _text_changed, None)
             # Add setting to the view so it can be found by the event listener
             input_view.settings().set("serial_input", True)
+            input_view.settings().set("gutter", False)
 
     def write_file(self, command_args):
         """
@@ -330,40 +316,44 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         """
         sm_thread = self.open_ports[command_args.comport]
 
-        baud_list = [b[0] for b in sm_thread.serial.getSupportedBaudrates()]
-        data_bits_list = [b[0] for b in sm_thread.serial.getSupportedByteSizes()]
-        stop_bits_list = [b[0] for b in sm_thread.serial.getSupportedStopbits()]
-        parity_list = sm_thread.serial.getSupportedParities()
+        s = serial.SerialBase()
+        baud_list = [b[0] for b in s.getSupportedBaudrates()]
+        data_bits_list = [b[0] for b in s.getSupportedByteSizes()]
+        stop_bits_list = [b[0] for b in s.getSupportedStopbits()]
+        parity_list = s.getSupportedParities()
 
-        config = list(sm_thread.get_config())
+        config = sm_thread.get_config()
 
         def stop_bits_selected(bits, index):
-            config[3] = float(bits)
-            if config[3] == int(bits):
-                config[3] = int(bits)
+            config.stop_bits = float(bits)
+            try:
+                config.stop_bits = int(bits)
+            except ValueError:
+                pass
 
-            self.logger.info("Reconfiguring port: {} baud, {} data, {} parity, {} stop)".format(*config))
-            sm_thread.reconfigure_port(*config)
+            self.logger.info("Reconfiguring port: {}, baud: {}, data: {}, parity: {} stop: {}".format(
+                             config.comport, config.baud, config.data_bits, config.parity, config.stop_bits))
+            sm_thread.reconfigure_port(config)
 
         def parity_selected(parity, index):
-            config[2] = parity_list[index][1]
-            index = self._get_index_or_default(stop_bits_list, str(config[3]))
+            config.parity = parity_list[index][1]
+            index = self._get_index_or_default(stop_bits_list, str(config.stop_bits))
             selector = SerialOptionSelector(stop_bits_list, "Select Stop Bits:")
             selector.show(stop_bits_selected, index)
 
         def data_bits_selected(bits, index):
-            config[1] = int(bits)
-            index = self._get_index_or_default([p[1] for p in parity_list], str(config[2]))
+            config.data_bits = int(bits)
+            index = self._get_index_or_default([p[1] for p in parity_list], str(config.parity))
             selector = SerialOptionSelector([p[0] for p in parity_list], "Select Parity:")
             selector.show(parity_selected, index)
 
         def baud_selected(baud, index):
-            config[0] = int(baud)
-            index = self._get_index_or_default(data_bits_list, str(config[1]))
+            config.baud = int(baud)
+            index = self._get_index_or_default(data_bits_list, str(config.data_bits))
             selector = SerialOptionSelector(data_bits_list, "Select Data Bits:")
             selector.show(data_bits_selected, index)
 
-        index = self._get_index_or_default(baud_list, str(config[0]))
+        index = self._get_index_or_default(baud_list, str(config.baud))
         selector = SerialOptionSelector(baud_list, "Select Baud Rate:")
         selector.show(baud_selected, index)
 
@@ -441,7 +431,7 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
 
             if list_type == self.PortListType.AVAILABLE:
                 # Get a list of the available ports that aren't currently open
-                port_list = [c for c in list_ports(exclude=open_port_names) if c not in self.open_ports]
+                port_list = [c for c in hardware_factory.list_serial_ports(exclude=open_port_names) if c not in self.open_ports]
             else:
                 port_list = open_port_names
 
@@ -511,15 +501,13 @@ class SerialMonitorCommand(sublime_plugin.ApplicationCommand):
         :param command_args: The port info in order to open the serial port
         :type command_args: SerialSettings
         """
-
-        # Create the serial port without specifying the comport so it does not automatically open
         self.logger.info("Creating serial port: {}, baud: {}".format(command_args.comport, command_args.baud))
-        serial_port = serial.Serial(None, command_args.baud, timeout=0.05)
+        stream = SerialTextStream(command_args)
 
         window = sublime.active_window()
         view = self._create_new_view(window, command_args.comport)
 
-        sm_thread = serial_monitor_thread.SerialMonitor(command_args.comport, serial_port, view, window)
+        sm_thread = serial_monitor_thread.SerialMonitor(stream, view, window)
 
         self._merge_args_with_defaults(command_args)
         sm_thread.enable_timestamps(command_args.enable_timestamps)
